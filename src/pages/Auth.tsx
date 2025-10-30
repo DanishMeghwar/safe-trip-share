@@ -9,6 +9,26 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { Car, Users } from "lucide-react";
+import { z } from "zod";
+
+const signUpSchema = z.object({
+  email: z.string().email("Invalid email address").max(255, "Email too long"),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .max(72, "Password too long")
+    .regex(/[A-Z]/, "Password must contain an uppercase letter")
+    .regex(/[a-z]/, "Password must contain a lowercase letter")
+    .regex(/[0-9]/, "Password must contain a number"),
+  fullName: z.string()
+    .min(2, "Name must be at least 2 characters")
+    .max(100, "Name too long")
+    .trim(),
+});
+
+const signInSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password required"),
+});
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -24,6 +44,12 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
+      // Validate input
+      const validation = signUpSchema.safeParse({ email, password, fullName });
+      if (!validation.success) {
+        throw new Error(validation.error.errors[0].message);
+      }
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -81,6 +107,12 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
+      // Validate input
+      const validation = signInSchema.safeParse({ email, password });
+      if (!validation.success) {
+        throw new Error(validation.error.errors[0].message);
+      }
+
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,

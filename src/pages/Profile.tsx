@@ -7,6 +7,16 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Phone, CreditCard, Shield, Upload } from "lucide-react";
+import { z } from "zod";
+
+const profileSchema = z.object({
+  phone: z.string()
+    .regex(/^(\+92|0)?3[0-9]{9}$/, "Invalid Pakistani phone number (e.g., 03001234567)")
+    .or(z.literal("")),
+  cnic: z.string()
+    .regex(/^[0-9]{5}-[0-9]{7}-[0-9]$/, "CNIC must be in format XXXXX-XXXXXXX-X")
+    .or(z.literal("")),
+});
 
 const Profile = () => {
   const [loading, setLoading] = useState(false);
@@ -49,6 +59,12 @@ const Profile = () => {
     setLoading(true);
 
     try {
+      // Validate input
+      const validation = profileSchema.safeParse({ phone, cnic });
+      if (!validation.success) {
+        throw new Error(validation.error.errors[0].message);
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 

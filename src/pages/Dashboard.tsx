@@ -61,6 +61,8 @@ const Dashboard = () => {
         .select("role")
         .eq("user_id", userId);
 
+      // Note: These client-side role checks only control UI visibility.
+      // Actual authorization is enforced server-side via RLS policies.
       setRoles(rolesData?.map(r => r.role) || []);
     } catch (error: any) {
       console.error("Error loading user data:", error);

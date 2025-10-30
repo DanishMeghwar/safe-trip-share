@@ -9,6 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Search, MapPin, Calendar, Users, DollarSign, Star, Shield } from "lucide-react";
+import { z } from "zod";
+
+const bookingSchema = z.object({
+  seatsRequested: z.coerce.number().int("Seats must be a whole number").min(1, "At least 1 seat required").max(8, "Maximum 8 seats"),
+});
 
 const SearchRides = () => {
   const [loading, setLoading] = useState(false);
@@ -73,6 +78,12 @@ const SearchRides = () => {
 
   const handleBookRide = async (rideId: string, farePerSeat: number) => {
     try {
+      // Validate seats requested
+      const validation = bookingSchema.safeParse({ seatsRequested: 1 });
+      if (!validation.success) {
+        throw new Error(validation.error.errors[0].message);
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 

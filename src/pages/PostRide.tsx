@@ -9,6 +9,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, MapPin, Calendar, Users, DollarSign } from "lucide-react";
+import { z } from "zod";
+
+const rideSchema = z.object({
+  fromLocation: z.string().min(3, "From location too short").max(200, "Location too long").trim(),
+  toLocation: z.string().min(3, "To location too short").max(200, "Location too long").trim(),
+  departureTime: z.string().refine(
+    (date) => new Date(date) > new Date(),
+    "Departure time must be in the future"
+  ),
+  availableSeats: z.coerce.number().int("Seats must be a whole number").min(1, "At least 1 seat required").max(8, "Maximum 8 seats"),
+  farePerSeat: z.coerce.number().min(1, "Fare must be at least 1").max(100000, "Fare too high"),
+  notes: z.string().max(500, "Notes too long").optional(),
+});
 
 const PostRide = () => {
   const [loading, setLoading] = useState(false);
@@ -26,6 +39,20 @@ const PostRide = () => {
     setLoading(true);
 
     try {
+      // Validate input
+      const validation = rideSchema.safeParse({
+        fromLocation,
+        toLocation,
+        departureTime,
+        availableSeats,
+        farePerSeat,
+        notes,
+      });
+      
+      if (!validation.success) {
+        throw new Error(validation.error.errors[0].message);
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
