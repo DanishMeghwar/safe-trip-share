@@ -10,69 +10,35 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Search, MapPin, Calendar, Users, DollarSign, Star, Shield } from "lucide-react";
 import { z } from "zod";
+import { useRealtimeRides } from "@/hooks/useRealtimeRides";
 
 const bookingSchema = z.object({
   seatsRequested: z.coerce.number().int("Seats must be a whole number").min(1, "At least 1 seat required").max(8, "Maximum 8 seats"),
 });
 
 const SearchRides = () => {
-  const [loading, setLoading] = useState(false);
   const [fromLocation, setFromLocation] = useState("");
   const [toLocation, setToLocation] = useState("");
   const [departureDate, setDepartureDate] = useState("");
-  const [rides, setRides] = useState<any[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Use real-time rides hook
+  const { rides, loading } = useRealtimeRides({
+    status: ['scheduled', 'active'],
+    fromLocation: fromLocation || undefined,
+    toLocation: toLocation || undefined,
+    date: departureDate || undefined,
+  });
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-
-    try {
-      let query = supabase
-        .from("rides")
-        .select(`
-          *,
-          driver:profiles!driver_id(full_name, is_phone_verified),
-          vehicle:vehicles(vehicle_type, make, model, color)
-        `)
-        .eq("status", "scheduled")
-        .gt("available_seats", 0);
-
-      if (fromLocation) {
-        query = query.ilike("from_location", `%${fromLocation}%`);
-      }
-      if (toLocation) {
-        query = query.ilike("to_location", `%${toLocation}%`);
-      }
-      if (departureDate) {
-        const startOfDay = new Date(departureDate);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(departureDate);
-        endOfDay.setHours(23, 59, 59, 999);
-        query = query.gte("departure_time", startOfDay.toISOString()).lte("departure_time", endOfDay.toISOString());
-      }
-
-      const { data, error } = await query.order("departure_time", { ascending: true });
-
-      if (error) throw error;
-
-      setRides(data || []);
-
-      if (!data || data.length === 0) {
-        toast({
-          title: "No rides found",
-          description: "Try adjusting your search criteria",
-        });
-      }
-    } catch (error: any) {
+    // Real-time hook automatically fetches and updates rides
+    if (rides.length === 0 && !loading) {
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message,
+        title: "No rides found",
+        description: "Try adjusting your search criteria",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -97,13 +63,11 @@ const SearchRides = () => {
 
       if (error) throw error;
 
+      // Refresh rides (will trigger re-render via hook)
       toast({
         title: "Booking Request Sent!",
         description: "The driver will review your request",
       });
-
-      // Refresh rides
-      handleSearch(new Event("submit") as any);
     } catch (error: any) {
       toast({
         variant: "destructive",

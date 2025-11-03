@@ -130,6 +130,83 @@ export type Database = {
         }
         Relationships: []
       }
+      live_locations: {
+        Row: {
+          accuracy: number | null
+          heading: number | null
+          id: string
+          latitude: number
+          longitude: number
+          ride_id: string
+          speed: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          accuracy?: number | null
+          heading?: number | null
+          id?: string
+          latitude: number
+          longitude: number
+          ride_id: string
+          speed?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          accuracy?: number | null
+          heading?: number | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          ride_id?: string
+          speed?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_locations_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_preferences: {
+        Row: {
+          booking_updates: boolean | null
+          chat_messages: boolean | null
+          created_at: string | null
+          id: string
+          location_sharing: boolean | null
+          ride_reminders: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          booking_updates?: boolean | null
+          chat_messages?: boolean | null
+          created_at?: string | null
+          id?: string
+          location_sharing?: boolean | null
+          ride_reminders?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          booking_updates?: boolean | null
+          chat_messages?: boolean | null
+          created_at?: string | null
+          id?: string
+          location_sharing?: boolean | null
+          ride_reminders?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -163,6 +240,33 @@ export type Database = {
           is_phone_verified?: boolean | null
           phone?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      push_tokens: {
+        Row: {
+          created_at: string | null
+          id: string
+          platform: string
+          token: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          platform: string
+          token: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          platform?: string
+          token?: string
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
