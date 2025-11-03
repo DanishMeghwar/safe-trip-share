@@ -22,6 +22,19 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      # 👇 Build web assets (important!)
+      - name: Build web app
+        run: |
+          if [ -f package.json ]; then
+            if grep -q '"build"' package.json; then
+              npm run build
+            else
+              echo "No build script found, creating empty dist folder"
+              mkdir -p dist
+              echo "<h1>Safe Trip Share</h1>" > dist/index.html
+            fi
+          fi
+
       - name: Add and Sync Android Platform
         run: |
           npx cap add android
