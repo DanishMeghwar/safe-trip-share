@@ -1,4 +1,3 @@
-
 const firebaseConfig = {
   apiKey: "AIzaSyDeErqkvvBfy_u13_a3CLeaMSFcEa9eAq8",
   authDomain: "safe-trip-share.firebaseapp.com",
