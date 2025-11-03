@@ -1,7 +1,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.e30b7a058b6b4f7f85be52ee530a3c26',
+  appId: 'com.shareride.app',
   appName: 'ShareRide',
   webDir: 'dist',
   server: {
