@@ -16,11 +16,14 @@ steps:
   - name: Checkout repository
     uses: actions/checkout@v4
 
-  - name: Use Node.js 20
-    uses: actions/setup-node@v4
-    with:
-      node-version: 20
-      cache: "npm"
+  - name: Add or Sync Android Platform
+  run: |
+    if [ -d "android" ]; then
+      npx cap sync android
+    else
+      npx cap add android
+      npx cap sync android
+    fi
 
   - name: Install dependencies
     run: |
