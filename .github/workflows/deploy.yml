@@ -35,10 +35,14 @@ steps:
     run: |
       npm run build
 
-  - name: Clean Android platform (to prevent “already exists” error)
-    run: |
-      rm -rf android
+  - name: Add or Sync Android Platform
+  run: |
+    if [ -d "android" ]; then
+      npx cap sync android
+    else
       npx cap add android
+      npx cap sync android
+    
 
   - name: Sync Capacitor
     run: |
