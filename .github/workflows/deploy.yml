@@ -16,12 +16,8 @@ steps:
   - name: Checkout repository
     uses: actions/checkout@v4
 
-  - name: Add or Sync Android Platform
+  - name: Sync Android Platform
   run: |
-    if [ -d "android" ]; then
-      npx cap sync android
-    else
-      npx cap add android
       npx cap sync android
     fi
 
