@@ -1,9 +1,8 @@
-name: Build Safe Trip Share (Full Setup)
+name: Build Safe Trip Share (Fixed Android + Firebase + MapLibre)
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -26,19 +25,17 @@ jobs:
 
       - name: Ensure Capacitor config exists
         run: |
-          if [ ! -f "capacitor.config.json" ]; then
-            echo '{
-              "appId": "com.safetripshare.app",
-              "appName": "Safe Trip Share",
-              "webDir": "dist",
-              "bundledWebRuntime": false,
-              "plugins": {
-                "SplashScreen": { "launchShowDuration": 0 },
-                "PushNotifications": {}
-              },
-              "cordova": {}
-            }' > capacitor.config.json
-          fi
+          echo '{
+            "appId": "com.safetripshare.app",
+            "appName": "Safe Trip Share",
+            "webDir": "dist",
+            "bundledWebRuntime": false,
+            "plugins": {
+              "SplashScreen": { "launchShowDuration": 0 },
+              "PushNotifications": {}
+            },
+            "cordova": {}
+          }' > capacitor.config.json
 
       - name: Create Firebase config (if missing)
         run: |
@@ -53,19 +50,18 @@ jobs:
             measurementId: 'G-NHN6K78HK8'
           };" > src/firebaseConfig.js
 
-      - name: Add MapLibre dependency (for maps)
+      - name: Add MapLibre and Geolocation
         run: |
           npm install maplibre-gl @capacitor/geolocation
-          echo "MapLibre installed successfully."
+          echo "✅ MapLibre + Geolocation ready."
 
       - name: Build web assets
         run: npm run build
 
-      - name: Prepare Android platform
+      - name: Recreate Android platform cleanly
         run: |
-          if [ ! -d "./android" ]; then
-            npx cap add android
-          fi
+          rm -rf android
+          npx cap add android
           mkdir -p android/app/src/main/assets
           npx cap sync android
 
