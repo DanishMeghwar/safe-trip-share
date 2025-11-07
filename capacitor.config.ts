@@ -1,22 +1,18 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.shareride.app', // Unique package ID for Android
-  appName: 'ShareRide', // App name as it will appear on the device
-  webDir: 'dist', // Vite build output directory
-  bundledWebRuntime: false,
+  appId: 'com.shareride.app',
+  appName: 'ShareRide',
+  webDir: 'dist',
   server: {
-    androidScheme: 'https',
+    url: 'https://e30b7a05-8b6b-4f7f-85be-52ee530a3c26.lovableproject.com?forceHideBadge=true',
+    cleartext: true
   },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 2000,
-      launchAutoHide: true,
-      backgroundColor: '#ffffff',
-      androidScaleType: 'CENTER_CROP',
-      showSpinner: false,
-    },
-  },
+      launchShowDuration: 0
+    }
+  }
 };
 
 export default config;
