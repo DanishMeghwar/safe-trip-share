@@ -1,18 +1,28 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react-swc";
-import path from "path";
-import { componentTagger } from "lovable-tagger";
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react-swc'
+import path from 'path'
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
-  server: {
-    host: "::",
-    port: 8080,
+export default defineConfig({
+  plugins: [react()],
+  build: {
+    outDir: 'dist', // This is where Capacitor looks for web assets
+    sourcemap: false,
+    target: 'esnext',
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      '@': path.resolve(__dirname, './src'),
     },
   },
-}));
+  server: {
+    host: true, // allows external access (useful for testing on mobile)
+    port: 5173,
+  },
+  define: {
+    'process.env': {},
+  },
+  optimizeDeps: {
+    include: ['maplibre-gl', 'firebase/app', 'firebase/firestore', 'firebase/auth'],
+  }
+})
