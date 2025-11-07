@@ -6,7 +6,7 @@ import { useRealtimeBookingsAll } from "@/hooks/useRealtimeBookingsAll";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Car, Users, Activity, TrendingUp } from "lucide-react";
+import { ArrowLeft, Car, Users, Activity, TrendingUp, FileText } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 
@@ -111,6 +111,22 @@ export default function AdminDashboard() {
             <Activity className="h-4 w-4 mr-2" />
             Live
           </Badge>
+        </div>
+
+        {/* Quick Access */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-shadow border-orange-500/50" 
+            onClick={() => navigate("/admin/driver-documents")}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-orange-500" />
+                Driver Documents
+              </CardTitle>
+              <CardDescription>Review and verify driver documents</CardDescription>
+            </CardHeader>
+          </Card>
         </div>
 
         {/* Stats Cards */}
