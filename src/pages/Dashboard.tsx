@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Car, Users, MapPin, Search, Settings, LogOut, Shield, Star } from "lucide-react";
+import { Car, Users, MapPin, Search, Settings, LogOut, Shield, Star, Activity } from "lucide-react";
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -16,6 +16,10 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const isDriver = roles.includes("driver");
+  const isPassenger = roles.includes("passenger");
+  const isAdmin = roles.includes("admin");
 
   useEffect(() => {
     const getSession = async () => {
@@ -86,9 +90,6 @@ const Dashboard = () => {
       </div>
     );
   }
-
-  const isDriver = roles.includes("driver");
-  const isPassenger = roles.includes("passenger");
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background pb-20">
@@ -188,6 +189,18 @@ const Dashboard = () => {
               <CardDescription>Add phone, CNIC, and verify your account</CardDescription>
             </CardHeader>
           </Card>
+
+          {isAdmin && (
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow border-2 border-primary" onClick={() => navigate("/admin")}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Activity className="w-5 h-5 text-primary" />
+                  Admin Dashboard
+                </CardTitle>
+                <CardDescription>Monitor real-time ride activity</CardDescription>
+              </CardHeader>
+            </Card>
+          )}
         </div>
 
         {/* Recent Activity */}

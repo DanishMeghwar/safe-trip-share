@@ -466,7 +466,7 @@ export type Database = {
         | "completed"
         | "cancelled"
       ride_status: "scheduled" | "active" | "completed" | "cancelled"
-      user_role: "driver" | "passenger"
+      user_role: "driver" | "passenger" | "admin"
       vehicle_type: "sedan" | "suv" | "hatchback" | "van" | "motorcycle"
     }
     CompositeTypes: {
@@ -603,7 +603,7 @@ export const Constants = {
         "cancelled",
       ],
       ride_status: ["scheduled", "active", "completed", "cancelled"],
-      user_role: ["driver", "passenger"],
+      user_role: ["driver", "passenger", "admin"],
       vehicle_type: ["sedan", "suv", "hatchback", "van", "motorcycle"],
     },
   },

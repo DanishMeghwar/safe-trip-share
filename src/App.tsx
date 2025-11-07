@@ -11,6 +11,7 @@ import PostRide from "./pages/PostRide";
 import SearchRides from "./pages/SearchRides";
 import Profile from "./pages/Profile";
 import ActiveRide from "./pages/ActiveRide";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import { NetworkStatus } from "./components/NetworkStatus";
 import { pushNotificationService } from "./services/pushNotificationService";
@@ -49,6 +50,7 @@ const App = () => {
             <Route path="/search-rides" element={<SearchRides />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/ride/:rideId" element={<ActiveRide />} />
+            <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/welcome" element={<Index />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
