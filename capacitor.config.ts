@@ -1,18 +1,31 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.shareride.app',
-  appName: 'ShareRide',
+  appId: 'com.safetripshare.app',
+  appName: 'SafeTripShare',
   webDir: 'dist',
-  server: {
-    url: 'https://e30b7a05-8b6b-4f7f-85be-52ee530a3c26.lovableproject.com?forceHideBadge=true',
-    cleartext: true
-  },
+  bundledWebRuntime: false,
   plugins: {
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'alert'],
+    },
     SplashScreen: {
-      launchShowDuration: 0
-    }
-  }
+      launchShowDuration: 3000,
+      launchAutoHide: true,
+      backgroundColor: '#ffffff',
+      androidSplashResourceName: 'splash',
+    },
+    Geolocation: {
+      enabled: true,
+    },
+  },
+  server: {
+    androidScheme: 'https',
+  },
+  android: {
+    path: 'android',
+    allowMixedContent: true,
+  },
 };
 
 export default config;
