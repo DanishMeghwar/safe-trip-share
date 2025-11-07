@@ -1,9 +1,10 @@
-name: Build Safe Trip Share (Fixed Android + Firebase + MapLibre)
+name: Android Build
 
 on:
   push:
-    branches: [main]
-  workflow_dispatch:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
@@ -11,71 +12,34 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v3
         with:
-          node-version: 20
+          node-version: 18
 
       - name: Install dependencies
-        run: |
-          npm install -g firebase-tools
-          npm ci
+        run: npm ci
 
-      - name: Ensure Capacitor config exists
-        run: |
-          echo '{
-            "appId": "com.safetripshare.app",
-            "appName": "Safe Trip Share",
-            "webDir": "dist",
-            "bundledWebRuntime": false,
-            "plugins": {
-              "SplashScreen": { "launchShowDuration": 0 },
-              "PushNotifications": {}
-            },
-            "cordova": {}
-          }' > capacitor.config.json
+      - name: Sync Capacitor
+        run: npx cap sync android
 
-      - name: Create Firebase config (if missing)
-        run: |
-          mkdir -p src
-          echo "export const firebaseConfig = {
-            apiKey: 'AIzaSyDeErqkvvBfy_u13_a3CLeaMSFcEa9eAq8',
-            authDomain: 'safe-trip-share.firebaseapp.com',
-            projectId: 'safe-trip-share',
-            storageBucket: 'safe-trip-share.firebasestorage.app',
-            messagingSenderId: '753357786741',
-            appId: '1:753357786741:web:11438217c9b75d22f1b23c',
-            measurementId: 'G-NHN6K78HK8'
-          };" > src/firebaseConfig.js
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: 'temurin'
 
-      - name: Add MapLibre and Geolocation
-        run: |
-          npm install maplibre-gl @capacitor/geolocation
-          echo "✅ MapLibre + Geolocation ready."
-
-      - name: Build web assets
-        run: npm run build
-
-      - name: Recreate Android platform cleanly
-        run: |
-          rm -rf android
-          npx cap add android
-          mkdir -p android/app/src/main/assets
-          npx cap sync android
-
-      - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses || true
-
-      - name: Build Android APK
+      - name: Build Android Debug APK
         run: |
           cd android
           chmod +x ./gradlew
+          ./gradlew clean
           ./gradlew assembleDebug
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
         with:
-          name: SafeTripShare-APK
+          name: app-debug.apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
