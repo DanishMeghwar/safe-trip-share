@@ -457,6 +457,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      user_has_booking_for_ride: {
+        Args: { _ride_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_is_driver_for_ride: {
+        Args: { _ride_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       booking_status:
