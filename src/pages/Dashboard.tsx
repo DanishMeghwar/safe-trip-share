@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Car, Users, MapPin, Search, Settings, LogOut, Shield, Star, Activity } from "lucide-react";
+import { Car, Users, MapPin, Search, Settings, LogOut, Shield, Star, Activity, FileCheck } from "lucide-react";
+import VerificationNotifications from "@/components/VerificationNotifications";
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -120,9 +121,12 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
-          <Button variant="ghost" size="icon" className="text-white" onClick={handleSignOut}>
-            <LogOut className="w-5 h-5" />
-          </Button>
+          <div className="flex gap-2">
+            <VerificationNotifications />
+            <Button variant="ghost" size="icon" className="text-white" onClick={handleSignOut}>
+              <LogOut className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
 
         {profile?.is_phone_verified && (
@@ -155,6 +159,18 @@ const Dashboard = () => {
         {/* Quick Actions */}
         <div className="space-y-3">
           <h2 className="text-lg font-semibold px-2">Quick Actions</h2>
+
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(isDriver ? "/driver-verification" : "/passenger-verification")}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <FileCheck className="w-5 h-5 text-primary" />
+                {isDriver ? "Verify Driver Documents" : "Verify CNIC"}
+              </CardTitle>
+              <CardDescription>
+                {isDriver ? "Upload your license and vehicle documents" : "Complete identity verification"}
+              </CardDescription>
+            </CardHeader>
+          </Card>
 
           {isPassenger && (
             <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate("/search-rides")}>

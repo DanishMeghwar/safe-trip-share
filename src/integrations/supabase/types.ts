@@ -211,6 +211,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           cnic: string | null
+          cnic_document_url: string | null
           created_at: string | null
           full_name: string
           id: string
@@ -222,6 +223,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           cnic?: string | null
+          cnic_document_url?: string | null
           created_at?: string | null
           full_name: string
           id: string
@@ -233,6 +235,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           cnic?: string | null
+          cnic_document_url?: string | null
           created_at?: string | null
           full_name?: string
           id?: string
@@ -444,6 +447,44 @@ export type Database = {
           year?: number
         }
         Relationships: []
+      }
+      verification_notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string
+          read: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message: string
+          read?: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string
+          read?: boolean | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verification_notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

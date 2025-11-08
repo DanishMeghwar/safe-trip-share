@@ -13,6 +13,8 @@ import Profile from "./pages/Profile";
 import ActiveRide from "./pages/ActiveRide";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminDriverDocuments from "./pages/AdminDriverDocuments";
+import DriverVerification from "./pages/DriverVerification";
+import PassengerVerification from "./pages/PassengerVerification";
 import NotFound from "./pages/NotFound";
 import { NetworkStatus } from "./components/NetworkStatus";
 import { pushNotificationService } from "./services/pushNotificationService";
@@ -53,6 +55,8 @@ const App = () => {
             <Route path="/ride/:rideId" element={<ActiveRide />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/driver-documents" element={<AdminDriverDocuments />} />
+            <Route path="/driver-verification" element={<DriverVerification />} />
+            <Route path="/passenger-verification" element={<PassengerVerification />} />
             <Route path="/welcome" element={<Index />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

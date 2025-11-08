@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Phone, CreditCard, Shield, Upload } from "lucide-react";
+import { ArrowLeft, Phone, CreditCard, Shield, Upload, FileCheck, Car } from "lucide-react";
 import { z } from "zod";
 
 const profileSchema = z.object({
@@ -23,11 +23,15 @@ const Profile = () => {
   const [profile, setProfile] = useState<any>(null);
   const [phone, setPhone] = useState("");
   const [cnic, setCnic] = useState("");
+  const [roles, setRoles] = useState<string[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const isDriver = roles.includes("driver");
+
   useEffect(() => {
     loadProfile();
+    loadRoles();
   }, []);
 
   const loadProfile = async () => {
@@ -51,6 +55,22 @@ const Profile = () => {
       setCnic(data?.cnic || "");
     } catch (error: any) {
       console.error("Error loading profile:", error);
+    }
+  };
+
+  const loadRoles = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: rolesData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+
+      setRoles(rolesData?.map(r => r.role) || []);
+    } catch (error: any) {
+      console.error("Error loading roles:", error);
     }
   };
 
@@ -185,19 +205,29 @@ const Profile = () => {
         <Card>
           <CardHeader>
             <CardTitle>Document Verification</CardTitle>
-            <CardDescription>Upload documents for verification (Coming Soon)</CardDescription>
+            <CardDescription>Upload and verify your documents</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button variant="outline" className="w-full justify-start" disabled>
-              <Upload className="w-4 h-4 mr-2" />
-              Upload CNIC Front
+            <Button 
+              variant="outline" 
+              className="w-full justify-start" 
+              onClick={() => navigate("/passenger-verification")}
+            >
+              <FileCheck className="w-4 h-4 mr-2" />
+              Verify CNIC
             </Button>
-            <Button variant="outline" className="w-full justify-start" disabled>
-              <Upload className="w-4 h-4 mr-2" />
-              Upload CNIC Back
-            </Button>
+            {isDriver && (
+              <Button 
+                variant="outline" 
+                className="w-full justify-start" 
+                onClick={() => navigate("/driver-verification")}
+              >
+                <Car className="w-4 h-4 mr-2" />
+                Verify Driver Documents
+              </Button>
+            )}
             <p className="text-xs text-muted-foreground text-center">
-              Document upload will be available soon
+              Complete verification to unlock all features
             </p>
           </CardContent>
         </Card>
