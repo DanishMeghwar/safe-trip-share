@@ -13,6 +13,7 @@ import Profile from "./pages/Profile";
 import ActiveRide from "./pages/ActiveRide";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminDriverDocuments from "./pages/AdminDriverDocuments";
+import AdminUserManagement from "./pages/AdminUserManagement";
 import DriverVerification from "./pages/DriverVerification";
 import PassengerVerification from "./pages/PassengerVerification";
 import NotFound from "./pages/NotFound";
@@ -55,6 +56,7 @@ const App = () => {
             <Route path="/ride/:rideId" element={<ActiveRide />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/driver-documents" element={<AdminDriverDocuments />} />
+            <Route path="/admin/users" element={<AdminUserManagement />} />
             <Route path="/driver-verification" element={<DriverVerification />} />
             <Route path="/passenger-verification" element={<PassengerVerification />} />
             <Route path="/welcome" element={<Index />} />

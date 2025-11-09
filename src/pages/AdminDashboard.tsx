@@ -127,6 +127,19 @@ export default function AdminDashboard() {
               <CardDescription>Review and verify driver documents</CardDescription>
             </CardHeader>
           </Card>
+
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-shadow border-blue-500/50" 
+            onClick={() => navigate("/admin/users")}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-blue-500" />
+                User Management
+              </CardTitle>
+              <CardDescription>Manage user roles and permissions</CardDescription>
+            </CardHeader>
+          </Card>
         </div>
 
         {/* Stats Cards */}
