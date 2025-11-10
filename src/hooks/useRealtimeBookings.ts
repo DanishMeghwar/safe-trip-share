@@ -5,7 +5,7 @@ import { Database } from '@/integrations/supabase/types';
 type Booking = Database['public']['Tables']['bookings']['Row'];
 
 export const useRealtimeBookings = (userId: string | undefined) => {
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -14,12 +14,19 @@ export const useRealtimeBookings = (userId: string | undefined) => {
       return;
     }
 
-    // Initial fetch
+    // Initial fetch with ride details
     const fetchBookings = async () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('bookings')
-        .select('*')
+        .select(`
+          *,
+          ride:rides(
+            from_location,
+            to_location,
+            departure_time
+          )
+        `)
         .eq('passenger_id', userId)
         .order('created_at', { ascending: false });
 
@@ -42,15 +49,47 @@ export const useRealtimeBookings = (userId: string | undefined) => {
           table: 'bookings',
           filter: `passenger_id=eq.${userId}`
         },
-        (payload) => {
+        async (payload) => {
           if (payload.eventType === 'INSERT') {
-            setBookings((current) => [payload.new as Booking, ...current]);
+            // Fetch the full booking with ride details
+            const { data } = await supabase
+              .from('bookings')
+              .select(`
+                *,
+                ride:rides(
+                  from_location,
+                  to_location,
+                  departure_time
+                )
+              `)
+              .eq('id', payload.new.id)
+              .single();
+            
+            if (data) {
+              setBookings((current) => [data, ...current]);
+            }
           } else if (payload.eventType === 'UPDATE') {
-            setBookings((current) =>
-              current.map((booking) =>
-                booking.id === payload.old.id ? (payload.new as Booking) : booking
-              )
-            );
+            // Fetch the updated booking with ride details
+            const { data } = await supabase
+              .from('bookings')
+              .select(`
+                *,
+                ride:rides(
+                  from_location,
+                  to_location,
+                  departure_time
+                )
+              `)
+              .eq('id', payload.new.id)
+              .single();
+            
+            if (data) {
+              setBookings((current) =>
+                current.map((booking) =>
+                  booking.id === payload.old.id ? data : booking
+                )
+              );
+            }
           } else if (payload.eventType === 'DELETE') {
             setBookings((current) =>
               current.filter((booking) => booking.id !== payload.old.id)

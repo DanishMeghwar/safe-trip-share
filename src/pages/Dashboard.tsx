@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Car, Users, MapPin, Search, Settings, LogOut, Shield, Star, Activity, FileCheck } from "lucide-react";
+import { Car, Users, MapPin, Search, Settings, LogOut, Shield, Star, Activity, FileCheck, MessageCircle } from "lucide-react";
 import VerificationNotifications from "@/components/VerificationNotifications";
+import { useRealtimeBookings } from "@/hooks/useRealtimeBookings";
+import { format } from "date-fns";
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -17,6 +19,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { bookings } = useRealtimeBookings(user?.id);
 
   const isDriver = roles.includes("driver");
   const isPassenger = roles.includes("passenger");
@@ -219,16 +222,53 @@ const Dashboard = () => {
           )}
         </div>
 
+        {/* My Bookings */}
+        {isPassenger && bookings.length > 0 && (
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold px-2">My Bookings</h2>
+            {bookings.slice(0, 3).map((booking: any) => (
+              <Card key={booking.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(`/booking/${booking.id}`)}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">{booking.ride?.from_location} → {booking.ride?.to_location}</CardTitle>
+                    <Badge variant={booking.status === 'confirmed' ? 'default' : 'secondary'}>
+                      {booking.status}
+                    </Badge>
+                  </div>
+                  <CardDescription className="flex items-center gap-2 mt-2">
+                    <MapPin className="h-4 w-4" />
+                    {booking.ride?.departure_time && format(new Date(booking.ride.departure_time), 'PPp')}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Seats: {booking.seats_requested}</span>
+                    <Button variant="outline" size="sm" onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/booking/${booking.id}`);
+                    }}>
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      Chat
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
         {/* Recent Activity */}
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold px-2">Recent Activity</h2>
-          <Card>
-            <CardContent className="pt-6 text-center text-muted-foreground">
-              <p>No recent activity</p>
-              <p className="text-sm mt-1">Your trips will appear here</p>
-            </CardContent>
-          </Card>
-        </div>
+        {bookings.length === 0 && (
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold px-2">Recent Activity</h2>
+            <Card>
+              <CardContent className="pt-6 text-center text-muted-foreground">
+                <p>No recent activity</p>
+                <p className="text-sm mt-1">Your trips will appear here</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );
