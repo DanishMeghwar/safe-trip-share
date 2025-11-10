@@ -8,9 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Search, MapPin, Calendar, Users, DollarSign, Star, Shield } from "lucide-react";
+import { ArrowLeft, Search, MapPin, Calendar, Users, DollarSign, Star, Shield, Info } from "lucide-react";
 import { z } from "zod";
 import { useRealtimeRides } from "@/hooks/useRealtimeRides";
+import { calculateFare } from "@/lib/fareCalculator";
+import { FareBreakdownDialog } from "@/components/FareBreakdownDialog";
+import { Database } from "@/integrations/supabase/types";
 
 const bookingSchema = z.object({
   seatsRequested: z.coerce.number().int("Seats must be a whole number").min(1, "At least 1 seat required").max(8, "Maximum 8 seats"),
@@ -20,6 +23,8 @@ const SearchRides = () => {
   const [fromLocation, setFromLocation] = useState("");
   const [toLocation, setToLocation] = useState("");
   const [departureDate, setDepartureDate] = useState("");
+  const [selectedRideBreakdown, setSelectedRideBreakdown] = useState<ReturnType<typeof calculateFare> | null>(null);
+  const [showBreakdown, setShowBreakdown] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -205,9 +210,30 @@ const SearchRides = () => {
                         <Users className="w-4 h-4" />
                         <span>{ride.available_seats} seats</span>
                       </div>
-                      <div className="flex items-center gap-1 text-primary font-semibold">
-                        <DollarSign className="w-4 h-4" />
-                        <span>PKR {ride.fare_per_seat}</span>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1 text-primary font-semibold">
+                          <DollarSign className="w-4 h-4" />
+                          <span>PKR {ride.fare_per_seat}</span>
+                        </div>
+                        {ride.route_distance_km && ride.vehicle?.vehicle_type && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto p-0 text-xs text-muted-foreground hover:text-primary"
+                            onClick={() => {
+                              const breakdown = calculateFare(
+                                Number(ride.route_distance_km),
+                                ride.vehicle.vehicle_type as Database['public']['Enums']['vehicle_type'],
+                                ride.available_seats
+                              );
+                              setSelectedRideBreakdown(breakdown);
+                              setShowBreakdown(true);
+                            }}
+                          >
+                            <Info className="w-3 h-3 mr-1" />
+                            See breakdown
+                          </Button>
+                        )}
                       </div>
                     </div>
                     <Button size="sm" onClick={() => handleBookRide(ride.id, ride.fare_per_seat)}>
@@ -230,6 +256,14 @@ const SearchRides = () => {
           </Card>
         )}
       </div>
+
+      {selectedRideBreakdown && (
+        <FareBreakdownDialog
+          open={showBreakdown}
+          onOpenChange={setShowBreakdown}
+          breakdown={selectedRideBreakdown}
+        />
+      )}
     </div>
   );
 };

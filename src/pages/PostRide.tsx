@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,9 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, MapPin, Calendar, Users, DollarSign } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Users, DollarSign, Calculator, Info } from "lucide-react";
 import { z } from "zod";
+import { calculateFare, getSuggestedFareRange } from "@/lib/fareCalculator";
+import { Database } from "@/integrations/supabase/types";
+import { FareBreakdownDialog } from "@/components/FareBreakdownDialog";
 
 const rideSchema = z.object({
   fromLocation: z.string().min(3, "From location too short").max(200, "Location too long").trim(),
@@ -30,9 +34,47 @@ const PostRide = () => {
   const [departureTime, setDepartureTime] = useState("");
   const [availableSeats, setAvailableSeats] = useState("1");
   const [farePerSeat, setFarePerSeat] = useState("");
+  const [distance, setDistance] = useState("");
   const [notes, setNotes] = useState("");
+  const [vehicleType, setVehicleType] = useState<Database['public']['Enums']['vehicle_type'] | null>(null);
+  const [suggestedFare, setSuggestedFare] = useState<ReturnType<typeof getSuggestedFareRange> | null>(null);
+  const [showBreakdown, setShowBreakdown] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Fetch user's vehicle type
+  useEffect(() => {
+    const fetchVehicle = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: vehicle } = await supabase
+        .from("vehicles")
+        .select("vehicle_type")
+        .eq("driver_id", user.id)
+        .single();
+
+      if (vehicle) {
+        setVehicleType(vehicle.vehicle_type);
+      }
+    };
+
+    fetchVehicle();
+  }, []);
+
+  // Calculate fare when distance, seats, or vehicle type changes
+  useEffect(() => {
+    if (distance && availableSeats && vehicleType) {
+      const distanceKm = parseFloat(distance);
+      const seats = parseInt(availableSeats);
+      
+      if (distanceKm > 0 && seats > 0) {
+        const fareRange = getSuggestedFareRange(distanceKm, vehicleType, seats);
+        setSuggestedFare(fareRange);
+        setFarePerSeat(fareRange.suggested.toString());
+      }
+    }
+  }, [distance, availableSeats, vehicleType]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +93,11 @@ const PostRide = () => {
       
       if (!validation.success) {
         throw new Error(validation.error.errors[0].message);
+      }
+
+      const distanceKm = parseFloat(distance);
+      if (!distanceKm || distanceKm <= 0) {
+        throw new Error("Please enter a valid distance");
       }
 
       const { data: { user } } = await supabase.auth.getUser();
@@ -85,6 +132,7 @@ const PostRide = () => {
         departure_time: new Date(departureTime).toISOString(),
         available_seats: parseInt(availableSeats),
         fare_per_seat: parseFloat(farePerSeat),
+        route_distance_km: distanceKm,
         notes: notes || null,
         status: "scheduled",
       });
@@ -171,6 +219,23 @@ const PostRide = () => {
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="distance">Distance (km)</Label>
+                <Input
+                  id="distance"
+                  type="number"
+                  min="1"
+                  step="0.1"
+                  placeholder="e.g., 50"
+                  value={distance}
+                  onChange={(e) => setDistance(e.target.value)}
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Enter the approximate distance for automatic fare calculation
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="seats" className="flex items-center gap-2">
@@ -192,10 +257,24 @@ const PostRide = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="fare" className="flex items-center gap-2">
-                    <DollarSign className="w-4 h-4 text-primary" />
-                    Fare per Seat (PKR)
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="fare" className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-primary" />
+                      Fare per Seat (PKR)
+                    </Label>
+                    {suggestedFare && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => setShowBreakdown(true)}
+                      >
+                        <Info className="w-3 h-3 mr-1" />
+                        Breakdown
+                      </Button>
+                    )}
+                  </div>
                   <Input
                     id="fare"
                     type="number"
@@ -206,6 +285,17 @@ const PostRide = () => {
                     onChange={(e) => setFarePerSeat(e.target.value)}
                     required
                   />
+                  {suggestedFare && (
+                    <div className="space-y-1">
+                      <Badge variant="outline" className="bg-muted text-xs">
+                        <Calculator className="w-3 h-3 mr-1" />
+                        Suggested: PKR {suggestedFare.suggested}
+                      </Badge>
+                      <p className="text-xs text-muted-foreground">
+                        Range: {suggestedFare.min} - {suggestedFare.max} (negotiable)
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -226,6 +316,14 @@ const PostRide = () => {
             </form>
           </CardContent>
         </Card>
+
+        {suggestedFare && (
+          <FareBreakdownDialog
+            open={showBreakdown}
+            onOpenChange={setShowBreakdown}
+            breakdown={suggestedFare.breakdown}
+          />
+        )}
       </div>
     </div>
   );
