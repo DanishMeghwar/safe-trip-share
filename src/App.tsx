@@ -50,7 +50,6 @@ const App = () => {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/auth" element={<Auth />} />
             <Route path="/post-ride" element={<PostRide />} />
             <Route path="/search-rides" element={<SearchRides />} />
             <Route path="/profile" element={<Profile />} />

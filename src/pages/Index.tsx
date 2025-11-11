@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Car, Users, Shield, Star, MapPin } from "lucide-react";
+import { AuthDrawer } from "@/components/AuthDrawer";
 
 const Index = () => {
   const navigate = useNavigate();
+  const [authOpen, setAuthOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/10 via-background to-background">
@@ -24,7 +27,7 @@ const Index = () => {
             <Button 
               size="lg" 
               className="text-lg py-6 rounded-xl"
-              onClick={() => navigate("/auth")}
+              onClick={() => setAuthOpen(true)}
             >
               Get Started
             </Button>
@@ -32,11 +35,17 @@ const Index = () => {
               size="lg" 
               variant="outline"
               className="text-lg py-6 rounded-xl"
-              onClick={() => navigate("/auth")}
+              onClick={() => setAuthOpen(true)}
             >
               Sign In
             </Button>
           </div>
+          
+          <AuthDrawer 
+            open={authOpen} 
+            onOpenChange={setAuthOpen}
+            onSuccess={() => navigate("/")}
+          />
         </div>
       </div>
 
@@ -96,7 +105,7 @@ const Index = () => {
           <Button 
             size="lg" 
             className="text-lg py-6 px-8 rounded-xl"
-            onClick={() => navigate("/auth")}
+            onClick={() => setAuthOpen(true)}
           >
             Create Account
           </Button>
