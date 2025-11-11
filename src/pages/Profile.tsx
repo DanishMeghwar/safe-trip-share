@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Phone, CreditCard, Shield, Upload, FileCheck, Car } from "lucide-react";
+import { ArrowLeft, Phone, CreditCard, Shield, Upload, FileCheck, Car, Camera } from "lucide-react";
 import { z } from "zod";
 
 const profileSchema = z.object({
@@ -20,6 +21,7 @@ const profileSchema = z.object({
 
 const Profile = () => {
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [phone, setPhone] = useState("");
   const [cnic, setCnic] = useState("");
@@ -71,6 +73,74 @@ const Profile = () => {
       setRoles(rolesData?.map(r => r.role) || []);
     } catch (error: any) {
       console.error("Error loading roles:", error);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file
+    if (!file.type.startsWith('image/')) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please upload an image file",
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Image must be less than 5MB",
+      });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Upload to Supabase storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError, data } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      // Update profile
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", user.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "Success",
+        description: "Profile picture updated",
+      });
+
+      loadProfile();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -129,6 +199,42 @@ const Profile = () => {
       </div>
 
       <div className="px-4 space-y-4">
+        {/* Profile Picture */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center gap-4">
+              <div className="relative">
+                <Avatar className="w-32 h-32 border-4 border-primary/20">
+                  <AvatarImage src={profile?.avatar_url} alt={profile?.full_name} />
+                  <AvatarFallback className="bg-primary text-white text-4xl">
+                    {profile?.full_name?.charAt(0) || "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <label 
+                  htmlFor="avatar-upload" 
+                  className="absolute bottom-0 right-0 w-10 h-10 bg-primary rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:bg-primary/90 transition-colors"
+                >
+                  <Camera className="w-5 h-5 text-white" />
+                  <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    className="hidden"
+                    disabled={uploading}
+                  />
+                </label>
+              </div>
+              <div className="text-center">
+                <h2 className="text-xl font-bold">{profile?.full_name}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {uploading ? "Uploading..." : "Tap camera icon to change"}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Verification Status */}
         <Card>
           <CardHeader>

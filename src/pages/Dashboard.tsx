@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Car, Users, MapPin, Search, Settings, LogOut, Shield, Star, Activity, FileCheck, MessageCircle } from "lucide-react";
@@ -102,6 +102,7 @@ const Dashboard = () => {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <Avatar className="w-12 h-12 border-2 border-white">
+              <AvatarImage src={profile?.avatar_url} alt={profile?.full_name} />
               <AvatarFallback className="bg-secondary text-white text-lg">
                 {profile?.full_name?.charAt(0) || "U"}
               </AvatarFallback>

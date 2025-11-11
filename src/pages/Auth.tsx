@@ -138,105 +138,132 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary/10 to-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-4">
-            <Car className="w-8 h-8 text-white" />
+    <div className="min-h-screen bg-gradient-to-br from-primary via-primary/90 to-primary/70 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+      </div>
+
+      <Card className="w-full max-w-md backdrop-blur-sm bg-background/95 shadow-2xl border-primary/20 relative z-10">
+        <CardHeader className="text-center space-y-4 pb-8">
+          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-primary to-primary/80 rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform">
+            <Car className="w-10 h-10 text-white" />
           </div>
-          <CardTitle className="text-2xl">ShareRide</CardTitle>
-          <CardDescription>Safe, affordable ride sharing</CardDescription>
+          <div className="space-y-2">
+            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">ShareRide</CardTitle>
+            <CardDescription className="text-base">Your trusted companion for safe, affordable journeys</CardDescription>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-8">
           <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 h-12 bg-muted/50">
+              <TabsTrigger value="signin" className="text-base data-[state=active]:bg-primary data-[state=active]:text-white">Sign In</TabsTrigger>
+              <TabsTrigger value="signup" className="text-base data-[state=active]:bg-primary data-[state=active]:text-white">Sign Up</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="signin">
-              <form onSubmit={handleSignIn} className="space-y-4">
+            <TabsContent value="signin" className="mt-6">
+              <form onSubmit={handleSignIn} className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="signin-email">Email</Label>
+                  <Label htmlFor="signin-email" className="text-base">Email Address</Label>
                   <Input
                     id="signin-email"
                     type="email"
                     placeholder="your@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    className="h-11"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signin-password">Password</Label>
+                  <Label htmlFor="signin-password" className="text-base">Password</Label>
                   <Input
                     id="signin-password"
                     type="password"
+                    placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    className="h-11"
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button type="submit" className="w-full h-11 text-base shadow-lg" disabled={isLoading}>
                   {isLoading ? "Signing in..." : "Sign In"}
                 </Button>
               </form>
             </TabsContent>
 
-            <TabsContent value="signup">
-              <form onSubmit={handleSignUp} className="space-y-4">
+            <TabsContent value="signup" className="mt-6">
+              <form onSubmit={handleSignUp} className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-name">Full Name</Label>
+                  <Label htmlFor="signup-name" className="text-base">Full Name</Label>
                   <Input
                     id="signup-name"
                     type="text"
                     placeholder="John Doe"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
+                    className="h-11"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
+                  <Label htmlFor="signup-email" className="text-base">Email Address</Label>
                   <Input
                     id="signup-email"
                     type="email"
                     placeholder="your@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    className="h-11"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
+                  <Label htmlFor="signup-password" className="text-base">Password</Label>
                   <Input
                     id="signup-password"
                     type="password"
+                    placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    className="h-11"
                     required
                   />
+                  <p className="text-xs text-muted-foreground">Must be 8+ chars with uppercase, lowercase & number</p>
                 </div>
                 <div className="space-y-3">
-                  <Label>I want to</Label>
-                  <RadioGroup value={role} onValueChange={(v) => setRole(v as any)}>
-                    <div className="flex items-center space-x-2 border rounded-lg p-3 cursor-pointer hover:bg-accent">
+                  <Label className="text-base">Choose your role</Label>
+                  <RadioGroup value={role} onValueChange={(v) => setRole(v as any)} className="space-y-3">
+                    <div className="flex items-center space-x-3 border-2 rounded-xl p-4 cursor-pointer hover:bg-accent hover:border-primary transition-all">
                       <RadioGroupItem value="passenger" id="passenger" />
-                      <Label htmlFor="passenger" className="flex items-center gap-2 cursor-pointer flex-1">
-                        <Users className="w-4 h-4" />
-                        <span>Find rides as a passenger</span>
+                      <Label htmlFor="passenger" className="flex items-center gap-3 cursor-pointer flex-1">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Users className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Passenger</p>
+                          <p className="text-xs text-muted-foreground">Find and book rides</p>
+                        </div>
                       </Label>
                     </div>
-                    <div className="flex items-center space-x-2 border rounded-lg p-3 cursor-pointer hover:bg-accent">
+                    <div className="flex items-center space-x-3 border-2 rounded-xl p-4 cursor-pointer hover:bg-accent hover:border-primary transition-all">
                       <RadioGroupItem value="driver" id="driver" />
-                      <Label htmlFor="driver" className="flex items-center gap-2 cursor-pointer flex-1">
-                        <Car className="w-4 h-4" />
-                        <span>Offer rides as a driver</span>
+                      <Label htmlFor="driver" className="flex items-center gap-3 cursor-pointer flex-1">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Car className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Driver</p>
+                          <p className="text-xs text-muted-foreground">Offer rides and earn money</p>
+                        </div>
                       </Label>
                     </div>
                   </RadioGroup>
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button type="submit" className="w-full h-11 text-base shadow-lg" disabled={isLoading}>
                   {isLoading ? "Creating account..." : "Create Account"}
                 </Button>
               </form>
