@@ -1,15 +1,14 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { Car, Users } from "lucide-react";
+import { Car, Users, Mail, Lock, User, MapPin, Navigation } from "lucide-react";
 import { z } from "zod";
+import { motion } from "framer-motion";
 
 const signUpSchema = z.object({
   email: z.string().email("Invalid email address").max(255, "Email too long"),
@@ -31,20 +30,20 @@ const signInSchema = z.object({
 });
 
 const Auth = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<"driver" | "passenger">("passenger");
-  const navigate = useNavigate();
-  const { toast } = useToast();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Validate input
       const validation = signUpSchema.safeParse({ email, password, fullName });
       if (!validation.success) {
         throw new Error(validation.error.errors[0].message);
@@ -64,7 +63,6 @@ const Auth = () => {
       if (authError) throw authError;
 
       if (authData.user) {
-        // Create profile
         const { error: profileError } = await supabase
           .from("profiles")
           .insert({
@@ -74,7 +72,6 @@ const Auth = () => {
 
         if (profileError) throw profileError;
 
-        // Add role
         const { error: roleError } = await supabase
           .from("user_roles")
           .insert({
@@ -107,7 +104,6 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      // Validate input
       const validation = signInSchema.safeParse({ email, password });
       if (!validation.success) {
         throw new Error(validation.error.errors[0].message);
@@ -138,139 +134,273 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary via-primary/90 to-primary/70 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background decorative elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+    <div className="min-h-screen relative overflow-hidden bg-background">
+      {/* Animated Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background to-secondary/20" />
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMzLjMxNCAwIDYgMi42ODYgNiA2cy0yLjY4NiA2LTYgNi02LTIuNjg2LTYtNiAyLjY4Ni02IDYtNm0wIDJjLTIuMjEgMC00IDEuNzktNCA0czEuNzkgNCA0IDQgNC0xLjc5IDQtNC0xLjc5LTQtNC00eiIgZmlsbD0iY3VycmVudENvbG9yIiBmaWxsLW9wYWNpdHk9Ii4wNSIvPjwvZz48L3N2Zz4=')] opacity-30" />
+      
+      {/* Floating Elements */}
+      <motion.div
+        animate={{ y: [0, -20, 0], rotate: [0, 5, 0] }}
+        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-20 left-10 w-16 h-16 bg-primary/10 rounded-full blur-xl"
+      />
+      <motion.div
+        animate={{ y: [0, 20, 0], rotate: [0, -5, 0] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute bottom-20 right-10 w-24 h-24 bg-secondary/10 rounded-full blur-xl"
+      />
+      <motion.div
+        animate={{ x: [0, 30, 0] }}
+        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-1/2 right-1/4 w-20 h-20 bg-accent/10 rounded-full blur-xl"
+      />
+
+      {/* Content Container */}
+      <div className="relative min-h-screen flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
+          
+          {/* Left Side - Branding */}
+          <motion.div
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+            className="hidden lg:block space-y-8"
+          >
+            <div className="space-y-4">
+              <div className="inline-flex items-center gap-3 bg-primary/10 backdrop-blur-sm px-6 py-3 rounded-full border border-primary/20">
+                <Car className="w-6 h-6 text-primary" />
+                <span className="text-2xl font-bold text-primary">ShareRide</span>
+              </div>
+              <h1 className="text-5xl font-bold text-foreground leading-tight">
+                Your Journey,<br />
+                <span className="text-primary">Shared & Safe</span>
+              </h1>
+              <p className="text-lg text-muted-foreground max-w-md">
+                Join thousands of commuters who save money, reduce traffic, and make meaningful connections every day.
+              </p>
+            </div>
+
+            {/* Feature Pills */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 bg-card/50 backdrop-blur-sm px-4 py-3 rounded-xl border">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <MapPin className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Smart Route Matching</p>
+                  <p className="text-xs text-muted-foreground">AI-powered ride optimization</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 bg-card/50 backdrop-blur-sm px-4 py-3 rounded-xl border">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Verified Community</p>
+                  <p className="text-xs text-muted-foreground">CNIC & license verification</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 bg-card/50 backdrop-blur-sm px-4 py-3 rounded-xl border">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Navigation className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Real-time Tracking</p>
+                  <p className="text-xs text-muted-foreground">Live location sharing for safety</p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Right Side - Auth Form */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="w-full"
+          >
+            {/* Mobile Logo */}
+            <div className="lg:hidden text-center mb-8">
+              <div className="inline-flex items-center gap-2 bg-primary/10 backdrop-blur-sm px-5 py-2 rounded-full border border-primary/20 mb-4">
+                <Car className="w-5 h-5 text-primary" />
+                <span className="text-xl font-bold text-primary">ShareRide</span>
+              </div>
+              <h2 className="text-2xl font-bold text-foreground">Your Journey Starts Here</h2>
+            </div>
+
+            {/* Auth Card */}
+            <div className="bg-card/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-border/50 p-8">
+              {/* Toggle Buttons */}
+              <div className="flex gap-2 mb-8 p-1 bg-muted/30 rounded-2xl">
+                <button
+                  onClick={() => setIsSignUp(false)}
+                  className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all duration-300 ${
+                    !isSignUp
+                      ? "bg-primary text-primary-foreground shadow-lg"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => setIsSignUp(true)}
+                  className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all duration-300 ${
+                    isSignUp
+                      ? "bg-primary text-primary-foreground shadow-lg"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Sign Up
+                </button>
+              </div>
+
+              {/* Forms */}
+              {!isSignUp ? (
+                <form onSubmit={handleSignIn} className="space-y-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="your@email.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-12 h-12 bg-background/50 border-border/50 focus:border-primary rounded-xl"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                      <Input
+                        id="password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="pl-12 h-12 bg-background/50 border-border/50 focus:border-primary rounded-xl"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full h-12 text-base font-semibold rounded-xl"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Signing in..." : "Sign In"}
+                  </Button>
+                </form>
+              ) : (
+                <form onSubmit={handleSignUp} className="space-y-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Full Name</Label>
+                    <div className="relative">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                      <Input
+                        id="name"
+                        type="text"
+                        placeholder="John Doe"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="pl-12 h-12 bg-background/50 border-border/50 focus:border-primary rounded-xl"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">Email Address</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                      <Input
+                        id="signup-email"
+                        type="email"
+                        placeholder="your@email.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-12 h-12 bg-background/50 border-border/50 focus:border-primary rounded-xl"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                      <Input
+                        id="signup-password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="pl-12 h-12 bg-background/50 border-border/50 focus:border-primary rounded-xl"
+                        required
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      8+ chars with uppercase, lowercase & number
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label>Choose your role</Label>
+                    <RadioGroup value={role} onValueChange={(v) => setRole(v as any)} className="grid grid-cols-2 gap-3">
+                      <Label
+                        htmlFor="passenger"
+                        className={`flex flex-col items-center gap-2 border-2 rounded-xl p-4 cursor-pointer transition-all ${
+                          role === "passenger"
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        <RadioGroupItem value="passenger" id="passenger" className="sr-only" />
+                        <Users className="w-8 h-8 text-primary" />
+                        <div className="text-center">
+                          <p className="font-semibold text-sm">Passenger</p>
+                          <p className="text-xs text-muted-foreground">Find rides</p>
+                        </div>
+                      </Label>
+
+                      <Label
+                        htmlFor="driver"
+                        className={`flex flex-col items-center gap-2 border-2 rounded-xl p-4 cursor-pointer transition-all ${
+                          role === "driver"
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        <RadioGroupItem value="driver" id="driver" className="sr-only" />
+                        <Car className="w-8 h-8 text-primary" />
+                        <div className="text-center">
+                          <p className="font-semibold text-sm">Driver</p>
+                          <p className="text-xs text-muted-foreground">Offer rides</p>
+                        </div>
+                      </Label>
+                    </RadioGroup>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full h-12 text-base font-semibold rounded-xl"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Creating account..." : "Create Account"}
+                  </Button>
+                </form>
+              )}
+            </div>
+          </motion.div>
+        </div>
       </div>
-
-      <Card className="w-full max-w-md backdrop-blur-sm bg-background/95 shadow-2xl border-primary/20 relative z-10">
-        <CardHeader className="text-center space-y-4 pb-8">
-          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-primary to-primary/80 rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform">
-            <Car className="w-10 h-10 text-white" />
-          </div>
-          <div className="space-y-2">
-            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">ShareRide</CardTitle>
-            <CardDescription className="text-base">Your trusted companion for safe, affordable journeys</CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent className="pb-8">
-          <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 h-12 bg-muted/50">
-              <TabsTrigger value="signin" className="text-base data-[state=active]:bg-primary data-[state=active]:text-white">Sign In</TabsTrigger>
-              <TabsTrigger value="signup" className="text-base data-[state=active]:bg-primary data-[state=active]:text-white">Sign Up</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="signin" className="mt-6">
-              <form onSubmit={handleSignIn} className="space-y-5">
-                <div className="space-y-2">
-                  <Label htmlFor="signin-email" className="text-base">Email Address</Label>
-                  <Input
-                    id="signin-email"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="h-11"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signin-password" className="text-base">Password</Label>
-                  <Input
-                    id="signin-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="h-11"
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full h-11 text-base shadow-lg" disabled={isLoading}>
-                  {isLoading ? "Signing in..." : "Sign In"}
-                </Button>
-              </form>
-            </TabsContent>
-
-            <TabsContent value="signup" className="mt-6">
-              <form onSubmit={handleSignUp} className="space-y-5">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-name" className="text-base">Full Name</Label>
-                  <Input
-                    id="signup-name"
-                    type="text"
-                    placeholder="John Doe"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="h-11"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email" className="text-base">Email Address</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="h-11"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password" className="text-base">Password</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="h-11"
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">Must be 8+ chars with uppercase, lowercase & number</p>
-                </div>
-                <div className="space-y-3">
-                  <Label className="text-base">Choose your role</Label>
-                  <RadioGroup value={role} onValueChange={(v) => setRole(v as any)} className="space-y-3">
-                    <div className="flex items-center space-x-3 border-2 rounded-xl p-4 cursor-pointer hover:bg-accent hover:border-primary transition-all">
-                      <RadioGroupItem value="passenger" id="passenger" />
-                      <Label htmlFor="passenger" className="flex items-center gap-3 cursor-pointer flex-1">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <Users className="w-5 h-5 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium">Passenger</p>
-                          <p className="text-xs text-muted-foreground">Find and book rides</p>
-                        </div>
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-3 border-2 rounded-xl p-4 cursor-pointer hover:bg-accent hover:border-primary transition-all">
-                      <RadioGroupItem value="driver" id="driver" />
-                      <Label htmlFor="driver" className="flex items-center gap-3 cursor-pointer flex-1">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <Car className="w-5 h-5 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium">Driver</p>
-                          <p className="text-xs text-muted-foreground">Offer rides and earn money</p>
-                        </div>
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-                <Button type="submit" className="w-full h-11 text-base shadow-lg" disabled={isLoading}>
-                  {isLoading ? "Creating account..." : "Create Account"}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
     </div>
   );
 };

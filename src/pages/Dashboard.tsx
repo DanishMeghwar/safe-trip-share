@@ -11,14 +11,12 @@ import { Car, Users, MapPin, Search, Settings, LogOut, Shield, Star, Activity, F
 import VerificationNotifications from "@/components/VerificationNotifications";
 import { useRealtimeBookings } from "@/hooks/useRealtimeBookings";
 import { format } from "date-fns";
-import { AuthDrawer } from "@/components/AuthDrawer";
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [roles, setRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [authOpen, setAuthOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { bookings } = useRealtimeBookings(user?.id);
@@ -32,7 +30,7 @@ const Dashboard = () => {
       const { data: { session } } = await supabase.auth.getSession();
       setLoading(false);
       if (!session) {
-        setAuthOpen(true);
+        navigate("/auth");
         return;
       }
       setUser(session.user);
@@ -47,7 +45,7 @@ const Dashboard = () => {
         if (session?.user) {
           await loadUserData(session.user.id);
         } else {
-          setAuthOpen(true);
+          navigate("/auth");
         }
       }
     );
@@ -84,7 +82,7 @@ const Dashboard = () => {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    setAuthOpen(true);
+    navigate("/auth");
   };
 
   if (loading) {
@@ -99,13 +97,7 @@ const Dashboard = () => {
   }
 
   if (!user) {
-    return (
-      <AuthDrawer 
-        open={authOpen} 
-        onOpenChange={setAuthOpen}
-        onSuccess={() => window.location.reload()}
-      />
-    );
+    return null; // Will redirect via useEffect
   }
 
   return (
