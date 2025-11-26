@@ -5,7 +5,7 @@ import { Database } from '@/integrations/supabase/types';
 type DriverDocument = Database['public']['Tables']['driver_documents']['Row'];
 
 type DriverDocumentWithProfile = DriverDocument & {
-  driver?: { full_name: string; phone: string; email?: string } | null;
+  driver?: { full_name: string; phone: string; id: string } | null;
 };
 
 export const useRealtimeDriverDocuments = () => {
@@ -20,7 +20,7 @@ export const useRealtimeDriverDocuments = () => {
         .from('driver_documents')
         .select(`
           *,
-          driver:profiles!driver_id(full_name, phone)
+          driver:profiles!driver_id(id, full_name, phone)
         `)
         .order('created_at', { ascending: false });
 
@@ -49,7 +49,7 @@ export const useRealtimeDriverDocuments = () => {
               .from('driver_documents')
               .select(`
                 *,
-                driver:profiles!driver_id(full_name, phone)
+                driver:profiles!driver_id(id, full_name, phone)
               `)
               .eq('id', payload.new.id)
               .single();
@@ -63,7 +63,7 @@ export const useRealtimeDriverDocuments = () => {
               .from('driver_documents')
               .select(`
                 *,
-                driver:profiles!driver_id(full_name, phone)
+                driver:profiles!driver_id(id, full_name, phone)
               `)
               .eq('id', payload.new.id)
               .single();
