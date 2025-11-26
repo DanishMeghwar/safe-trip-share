@@ -98,7 +98,15 @@ export type Database = {
           updated_at?: string | null
           vehicle_registration_url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "driver_documents_driver_profile_fkey"
+            columns: ["driver_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       emergency_contacts: {
         Row: {

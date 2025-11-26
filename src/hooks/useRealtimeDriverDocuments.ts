@@ -24,7 +24,7 @@ export const useRealtimeDriverDocuments = () => {
           .from('driver_documents')
           .select(`
             *,
-            driver:profiles!driver_documents_driver_id_fkey(id, full_name, phone)
+            driver:profiles!driver_documents_driver_profile_fkey(id, full_name, phone)
           `)
           .order('created_at', { ascending: false });
 
@@ -61,7 +61,7 @@ export const useRealtimeDriverDocuments = () => {
               .from('driver_documents')
               .select(`
                 *,
-                driver:profiles!driver_documents_driver_id_fkey(id, full_name, phone)
+                driver:profiles!driver_documents_driver_profile_fkey(id, full_name, phone)
               `)
               .eq('id', payload.new.id)
               .single();
@@ -75,7 +75,7 @@ export const useRealtimeDriverDocuments = () => {
               .from('driver_documents')
               .select(`
                 *,
-                driver:profiles!driver_documents_driver_id_fkey(id, full_name, phone)
+                driver:profiles!driver_documents_driver_profile_fkey(id, full_name, phone)
               `)
               .eq('id', payload.new.id)
               .single();
