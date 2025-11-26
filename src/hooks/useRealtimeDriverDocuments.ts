@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 type DriverDocument = Database['public']['Tables']['driver_documents']['Row'];
 
@@ -13,28 +14,37 @@ export const useRealtimeDriverDocuments = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let channel: RealtimeChannel;
+
     // Initial fetch
     const fetchDocuments = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('driver_documents')
-        .select(`
-          *,
-          driver:profiles!driver_id(id, full_name, phone)
-        `)
-        .order('created_at', { ascending: false });
+      try {
+        const { data, error } = await supabase
+          .from('driver_documents')
+          .select(`
+            *,
+            driver:profiles!driver_documents_driver_id_fkey(id, full_name, phone)
+          `)
+          .order('created_at', { ascending: false });
 
-      if (!error && data) {
-        setDocuments(data as any);
+        if (error) {
+          console.error('Error fetching driver documents:', error);
+        } else if (data) {
+          setDocuments(data as any);
+        }
+      } catch (err) {
+        console.error('Unexpected error:', err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchDocuments();
 
     // Set up real-time subscription
-    const channel = supabase
-      .channel('driver-documents-changes')
+    channel = supabase
+      .channel('driver_documents_realtime')
       .on(
         'postgres_changes',
         {
@@ -43,32 +53,34 @@ export const useRealtimeDriverDocuments = () => {
           table: 'driver_documents'
         },
         async (payload) => {
+          console.log('Realtime event received:', payload.eventType);
+          
           if (payload.eventType === 'INSERT') {
             // Fetch the full document with driver data
-            const { data } = await supabase
+            const { data, error } = await supabase
               .from('driver_documents')
               .select(`
                 *,
-                driver:profiles!driver_id(id, full_name, phone)
+                driver:profiles!driver_documents_driver_id_fkey(id, full_name, phone)
               `)
               .eq('id', payload.new.id)
               .single();
             
-            if (data) {
+            if (!error && data) {
               setDocuments((current) => [data as any, ...current]);
             }
           } else if (payload.eventType === 'UPDATE') {
             // Fetch updated document with full data
-            const { data } = await supabase
+            const { data, error } = await supabase
               .from('driver_documents')
               .select(`
                 *,
-                driver:profiles!driver_id(id, full_name, phone)
+                driver:profiles!driver_documents_driver_id_fkey(id, full_name, phone)
               `)
               .eq('id', payload.new.id)
               .single();
             
-            if (data) {
+            if (!error && data) {
               setDocuments((current) =>
                 current.map((doc) =>
                   doc.id === payload.old.id ? (data as any) : doc
@@ -82,10 +94,14 @@ export const useRealtimeDriverDocuments = () => {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Realtime subscription status:', status);
+      });
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, []);
 
