@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,9 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, MapPin, Navigation } from "lucide-react";
 import { locationService } from "@/services/locationService";
 import { Database } from "@/integrations/supabase/types";
+import RideMap from "@/components/RideMap";
+import { useMapboxToken } from "@/components/MapboxTokenInput";
+import useRealtimeLiveLocations from "@/hooks/useRealtimeLiveLocations";
 
 type LiveLocation = Database['public']['Tables']['live_locations']['Row'];
 
@@ -16,8 +19,9 @@ const ActiveRide = () => {
   const { toast } = useToast();
   const [ride, setRide] = useState<any>(null);
   const [isTracking, setIsTracking] = useState(false);
-  const [locations, setLocations] = useState<LiveLocation[]>([]);
   const [loading, setLoading] = useState(true);
+  const { token: mapboxToken } = useMapboxToken();
+  const { locations } = useRealtimeLiveLocations(rideId);
 
   useEffect(() => {
     if (!rideId) return;
@@ -57,34 +61,38 @@ const ActiveRide = () => {
 
     loadRide();
 
-    // Subscribe to real-time location updates
-    const channel = supabase
-      .channel(`ride-locations-${rideId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'live_locations',
-          filter: `ride_id=eq.${rideId}`
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            setLocations((current) => {
-              const newLocation = payload.new as LiveLocation;
-              const filtered = current.filter(loc => loc.user_id !== newLocation.user_id);
-              return [...filtered, newLocation];
-            });
-          }
-        }
-      )
-      .subscribe();
-
     return () => {
-      supabase.removeChannel(channel);
       locationService.stopTracking();
     };
   }, [rideId, navigate, toast]);
+
+  // Create map markers from live locations
+  const mapMarkers = useMemo(() => {
+    const markers: { id: string; lat: number; lng: number; label: string; type: "driver" | "passenger" }[] = [];
+    
+    locations.forEach((loc) => {
+      markers.push({
+        id: loc.id,
+        lat: loc.latitude,
+        lng: loc.longitude,
+        label: `User ${loc.user_id.substring(0, 8)}...`,
+        type: loc.user_id === ride?.driver_id ? "driver" : "passenger",
+      });
+    });
+
+    // Add ride origin/destination if available
+    if (ride?.from_lat && ride?.from_lng) {
+      markers.push({
+        id: "origin",
+        lat: ride.from_lat,
+        lng: ride.from_lng,
+        label: ride.from_location,
+        type: "driver",
+      });
+    }
+
+    return markers;
+  }, [locations, ride]);
 
   const startLocationTracking = async () => {
     if (!rideId) return;
@@ -152,6 +160,24 @@ const ActiveRide = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Live Map */}
+            {mapboxToken && (
+              <div className="mb-4">
+                <h3 className="font-medium mb-2">Live Map</h3>
+                <RideMap 
+                  markers={mapMarkers} 
+                  className="h-[300px]" 
+                  showTokenInput={false}
+                  center={ride?.from_lat && ride?.from_lng ? [ride.from_lng, ride.from_lat] : undefined}
+                  zoom={12}
+                />
+              </div>
+            )}
+
+            {!mapboxToken && (
+              <RideMap markers={[]} showTokenInput={true} />
+            )}
+
             <div>
               <p className="text-sm text-muted-foreground">Departure Time</p>
               <p className="font-medium">

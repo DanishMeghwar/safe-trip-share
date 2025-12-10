@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,12 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Search, MapPin, Calendar, Users, DollarSign, Star, Shield, Info } from "lucide-react";
+import { ArrowLeft, Search, MapPin, Calendar, Users, DollarSign, Star, Shield, Info, Map, List } from "lucide-react";
 import { z } from "zod";
 import { useRealtimeRides } from "@/hooks/useRealtimeRides";
 import { calculateFare } from "@/lib/fareCalculator";
 import { FareBreakdownDialog } from "@/components/FareBreakdownDialog";
 import { Database } from "@/integrations/supabase/types";
+import RideMap from "@/components/RideMap";
+import { useMapboxToken } from "@/components/MapboxTokenInput";
 
 const bookingSchema = z.object({
   seatsRequested: z.coerce.number().int("Seats must be a whole number").min(1, "At least 1 seat required").max(8, "Maximum 8 seats"),
@@ -25,6 +27,8 @@ const SearchRides = () => {
   const [departureDate, setDepartureDate] = useState("");
   const [selectedRideBreakdown, setSelectedRideBreakdown] = useState<ReturnType<typeof calculateFare> | null>(null);
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const { token: mapboxToken } = useMapboxToken();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -82,15 +86,50 @@ const SearchRides = () => {
     }
   };
 
+  // Prepare map markers from rides
+  const mapMarkers = useMemo(() => {
+    return rides
+      .filter((ride) => ride.from_lat && ride.from_lng)
+      .map((ride) => ({
+        id: ride.id,
+        lat: ride.from_lat!,
+        lng: ride.from_lng!,
+        label: `${ride.from_location} → ${ride.to_location} (PKR ${ride.fare_per_seat})`,
+        type: "pickup" as const,
+      }));
+  }, [rides]);
+
   return (
     <div className="min-h-screen bg-background pb-6">
       {/* Header */}
       <div className="bg-primary text-white p-6 rounded-b-3xl shadow-lg mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <Button variant="ghost" size="icon" className="text-white" onClick={() => navigate("/")}>
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <h1 className="text-2xl font-bold">Search Rides</h1>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="text-white" onClick={() => navigate("/")}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <h1 className="text-2xl font-bold">Search Rides</h1>
+          </div>
+          {mapboxToken && (
+            <div className="flex gap-1 bg-white/20 rounded-lg p-1">
+              <Button
+                variant={viewMode === "list" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("list")}
+                className={viewMode === "list" ? "" : "text-white hover:bg-white/20"}
+              >
+                <List className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={viewMode === "map" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("map")}
+                className={viewMode === "map" ? "" : "text-white hover:bg-white/20"}
+              >
+                <Map className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
         </div>
         <p className="text-white/80 text-sm ml-11">Find your perfect ride</p>
       </div>
@@ -150,8 +189,16 @@ const SearchRides = () => {
           </CardContent>
         </Card>
 
-        {/* Results */}
-        {rides.length > 0 && (
+        {/* Map View */}
+        {viewMode === "map" && mapboxToken && (
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold px-2">{rides.length} Available Rides</h2>
+            <RideMap markers={mapMarkers} className="h-[400px]" showTokenInput={false} />
+          </div>
+        )}
+
+        {/* List Results */}
+        {viewMode === "list" && rides.length > 0 && (
           <div className="space-y-3">
             <h2 className="text-lg font-semibold px-2">{rides.length} Available Rides</h2>
             {rides.map((ride) => (
@@ -246,7 +293,7 @@ const SearchRides = () => {
           </div>
         )}
 
-        {!loading && rides.length === 0 && (fromLocation || toLocation || departureDate) && (
+        {viewMode === "list" && !loading && rides.length === 0 && (fromLocation || toLocation || departureDate) && (
           <Card>
             <CardContent className="pt-6 text-center text-muted-foreground">
               <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -254,6 +301,11 @@ const SearchRides = () => {
               <p className="text-sm mt-1">Try different locations or dates</p>
             </CardContent>
           </Card>
+        )}
+
+        {/* Map Token Input (shown only in list view when no token) */}
+        {viewMode === "list" && !mapboxToken && (
+          <RideMap markers={[]} showTokenInput={true} />
         )}
       </div>
 
