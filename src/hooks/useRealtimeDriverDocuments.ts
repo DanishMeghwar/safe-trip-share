@@ -16,25 +16,28 @@ export const useRealtimeDriverDocuments = () => {
   useEffect(() => {
     let channel: RealtimeChannel;
 
-    // Initial fetch
+    // Initial fetch - using simpler join syntax
     const fetchDocuments = async () => {
       setLoading(true);
       try {
+        console.log('[DriverDocs] Fetching documents...');
+        
         const { data, error } = await supabase
           .from('driver_documents')
           .select(`
             *,
-            driver:profiles!driver_documents_driver_profile_fkey(id, full_name, phone)
+            driver:profiles(id, full_name, phone)
           `)
           .order('created_at', { ascending: false });
 
         if (error) {
-          console.error('Error fetching driver documents:', error);
-        } else if (data) {
-          setDocuments(data as any);
+          console.error('[DriverDocs] Error fetching:', error);
+        } else {
+          console.log('[DriverDocs] Fetched:', data?.length || 0, 'documents');
+          setDocuments((data as DriverDocumentWithProfile[]) || []);
         }
       } catch (err) {
-        console.error('Unexpected error:', err);
+        console.error('[DriverDocs] Unexpected error:', err);
       } finally {
         setLoading(false);
       }
@@ -56,34 +59,28 @@ export const useRealtimeDriverDocuments = () => {
           console.log('Realtime event received:', payload.eventType);
           
           if (payload.eventType === 'INSERT') {
-            // Fetch the full document with driver data
+            console.log('[DriverDocs] INSERT event received');
             const { data, error } = await supabase
               .from('driver_documents')
-              .select(`
-                *,
-                driver:profiles!driver_documents_driver_profile_fkey(id, full_name, phone)
-              `)
+              .select(`*, driver:profiles(id, full_name, phone)`)
               .eq('id', payload.new.id)
               .single();
             
             if (!error && data) {
-              setDocuments((current) => [data as any, ...current]);
+              setDocuments((current) => [data as DriverDocumentWithProfile, ...current]);
             }
           } else if (payload.eventType === 'UPDATE') {
-            // Fetch updated document with full data
+            console.log('[DriverDocs] UPDATE event received');
             const { data, error } = await supabase
               .from('driver_documents')
-              .select(`
-                *,
-                driver:profiles!driver_documents_driver_profile_fkey(id, full_name, phone)
-              `)
+              .select(`*, driver:profiles(id, full_name, phone)`)
               .eq('id', payload.new.id)
               .single();
             
             if (!error && data) {
               setDocuments((current) =>
                 current.map((doc) =>
-                  doc.id === payload.old.id ? (data as any) : doc
+                  doc.id === payload.old.id ? (data as DriverDocumentWithProfile) : doc
                 )
               );
             }
