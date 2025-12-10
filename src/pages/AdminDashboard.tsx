@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeRides } from "@/hooks/useRealtimeRides";
-import { useRealtimeBookingsAll } from "@/hooks/useRealtimeBookingsAll";
+import { useBookingsWithPassengers } from "@/hooks/useBookingsWithPassengers";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +22,7 @@ export default function AdminDashboard() {
   });
 
   const { rides } = useRealtimeRides();
-  const { bookings: allBookings } = useRealtimeBookingsAll();
+  const { bookings: allBookings } = useBookingsWithPassengers();
 
   useEffect(() => {
     checkAdminAccess();
@@ -259,20 +259,25 @@ export default function AdminDashboard() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  allBookings.map((booking) => (
-                    <TableRow key={booking.id}>
-                      <TableCell className="font-medium">
-                        Passenger ID: {booking.passenger_id.slice(0, 8)}...
-                      </TableCell>
-                      <TableCell>{booking.pickup_location || "N/A"}</TableCell>
-                      <TableCell>{booking.seats_requested}</TableCell>
-                      <TableCell>Rs. {booking.total_fare}</TableCell>
-                      <TableCell>{getStatusBadge(booking.status || "pending")}</TableCell>
-                      <TableCell>
-                        {format(new Date(booking.created_at || new Date()), "MMM dd, HH:mm")}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  allBookings.map((booking) => {
+                    const passengerName = Array.isArray(booking.passenger) 
+                      ? booking.passenger[0]?.full_name 
+                      : booking.passenger?.full_name;
+                    return (
+                      <TableRow key={booking.id}>
+                        <TableCell className="font-medium">
+                          {passengerName || "Unknown"}
+                        </TableCell>
+                        <TableCell>{booking.pickup_location || "N/A"}</TableCell>
+                        <TableCell>{booking.seats_requested}</TableCell>
+                        <TableCell>Rs. {booking.total_fare}</TableCell>
+                        <TableCell>{getStatusBadge(booking.status || "pending")}</TableCell>
+                        <TableCell>
+                          {format(new Date(booking.created_at || new Date()), "MMM dd, HH:mm")}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
