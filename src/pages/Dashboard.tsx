@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Car, Users, MapPin, Search, Settings, LogOut, Shield, Star, Activity, FileCheck, MessageCircle } from "lucide-react";
 import VerificationNotifications from "@/components/VerificationNotifications";
 import { useRealtimeBookings } from "@/hooks/useRealtimeBookings";
+import { useUserStats } from "@/hooks/useUserStats";
 import { format } from "date-fns";
 
 const Dashboard = () => {
@@ -20,6 +21,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { bookings } = useRealtimeBookings(user?.id);
+  const { rating, totalTrips, loading: statsLoading } = useUserStats(user?.id);
 
   const isDriver = roles.includes("driver");
   const isPassenger = roles.includes("passenger");
@@ -152,14 +154,14 @@ const Dashboard = () => {
           <Card>
             <CardContent className="pt-6 text-center">
               <Star className="w-8 h-8 text-warning mx-auto mb-2" />
-              <p className="text-2xl font-bold">0.0</p>
+              <p className="text-2xl font-bold">{statsLoading ? "..." : rating.toFixed(1)}</p>
               <p className="text-sm text-muted-foreground">Rating</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
               <MapPin className="w-8 h-8 text-primary mx-auto mb-2" />
-              <p className="text-2xl font-bold">0</p>
+              <p className="text-2xl font-bold">{statsLoading ? "..." : totalTrips}</p>
               <p className="text-sm text-muted-foreground">Trips</p>
             </CardContent>
           </Card>

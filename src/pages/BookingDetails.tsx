@@ -4,8 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, MapPin, Calendar, Users, DollarSign } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Users, DollarSign, XCircle } from 'lucide-react';
 import { BookingChat } from '@/components/BookingChat';
+import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
 type BookingWithDetails = {
@@ -30,8 +31,17 @@ type BookingWithDetails = {
 const BookingDetails = () => {
   const { bookingId } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [booking, setBooking] = useState<BookingWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setCurrentUserId(data.user?.id || null);
+    });
+  }, []);
 
   useEffect(() => {
     const fetchBooking = async () => {
@@ -194,6 +204,43 @@ const BookingDetails = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Cancel Button for pending bookings */}
+        {booking.status === 'pending' && currentUserId === (booking as any).passenger_id && (
+          <Button
+            variant="destructive"
+            className="w-full"
+            disabled={cancelling}
+            onClick={async () => {
+              setCancelling(true);
+              try {
+                const { error } = await supabase
+                  .from('bookings')
+                  .update({ status: 'cancelled' })
+                  .eq('id', bookingId);
+                
+                if (error) throw error;
+                
+                toast({
+                  title: "Booking Cancelled",
+                  description: "Your booking has been cancelled successfully",
+                });
+                navigate('/');
+              } catch (error: any) {
+                toast({
+                  variant: "destructive",
+                  title: "Error",
+                  description: error.message,
+                });
+              } finally {
+                setCancelling(false);
+              }
+            }}
+          >
+            <XCircle className="h-4 w-4 mr-2" />
+            {cancelling ? "Cancelling..." : "Cancel Booking"}
+          </Button>
+        )}
 
         {bookingId && <BookingChat bookingId={bookingId} />}
       </div>

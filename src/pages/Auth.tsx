@@ -297,6 +297,15 @@ const Auth = () => {
                   >
                     {isLoading ? "Signing in..." : "Sign In"}
                   </Button>
+                  
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="w-full text-muted-foreground"
+                    onClick={() => navigate("/forgot-password")}
+                  >
+                    Forgot your password?
+                  </Button>
                 </form>
               ) : (
                 <form onSubmit={handleSignUp} className="space-y-5">
