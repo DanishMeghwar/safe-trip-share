@@ -9,11 +9,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, MapPin, Calendar, Users, DollarSign, Calculator, Info } from "lucide-react";
+import { ArrowLeft, Calendar, Users, DollarSign, Calculator, Info } from "lucide-react";
 import { z } from "zod";
-import { calculateFare, getSuggestedFareRange } from "@/lib/fareCalculator";
+import { getSuggestedFareRange } from "@/lib/fareCalculator";
 import { Database } from "@/integrations/supabase/types";
 import { FareBreakdownDialog } from "@/components/FareBreakdownDialog";
+import LocationPicker from "@/components/LocationPicker";
+import { calculateDistance } from "@/services/geocodingService";
 
 const rideSchema = z.object({
   fromLocation: z.string().min(3, "From location too short").max(200, "Location too long").trim(),
@@ -30,7 +32,11 @@ const rideSchema = z.object({
 const PostRide = () => {
   const [loading, setLoading] = useState(false);
   const [fromLocation, setFromLocation] = useState("");
+  const [fromLat, setFromLat] = useState<number | null>(null);
+  const [fromLng, setFromLng] = useState<number | null>(null);
   const [toLocation, setToLocation] = useState("");
+  const [toLat, setToLat] = useState<number | null>(null);
+  const [toLng, setToLng] = useState<number | null>(null);
   const [departureTime, setDepartureTime] = useState("");
   const [availableSeats, setAvailableSeats] = useState("1");
   const [farePerSeat, setFarePerSeat] = useState("");
@@ -62,6 +68,14 @@ const PostRide = () => {
     fetchVehicle();
   }, []);
 
+  // Auto-calculate distance when both locations have coordinates
+  useEffect(() => {
+    if (fromLat && fromLng && toLat && toLng) {
+      const dist = calculateDistance(fromLat, fromLng, toLat, toLng);
+      setDistance(dist.toFixed(1));
+    }
+  }, [fromLat, fromLng, toLat, toLng]);
+
   // Calculate fare when distance, seats, or vehicle type changes
   useEffect(() => {
     if (distance && availableSeats && vehicleType) {
@@ -75,6 +89,18 @@ const PostRide = () => {
       }
     }
   }, [distance, availableSeats, vehicleType]);
+
+  const handleFromChange = (location: string, lat: number | null, lng: number | null) => {
+    setFromLocation(location);
+    setFromLat(lat);
+    setFromLng(lng);
+  };
+
+  const handleToChange = (location: string, lat: number | null, lng: number | null) => {
+    setToLocation(location);
+    setToLat(lat);
+    setToLng(lng);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,14 +123,13 @@ const PostRide = () => {
 
       const distanceKm = parseFloat(distance);
       if (!distanceKm || distanceKm <= 0) {
-        throw new Error("Please enter a valid distance");
+        throw new Error("Please enter a valid distance or select locations on map");
       }
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // For now, we'll create a dummy vehicle if none exists
-      // In production, user should add vehicle first
+      // Check for vehicle
       let vehicleId;
       const { data: vehicles } = await supabase
         .from("vehicles")
@@ -129,6 +154,10 @@ const PostRide = () => {
         vehicle_id: vehicleId,
         from_location: fromLocation,
         to_location: toLocation,
+        from_lat: fromLat,
+        from_lng: fromLng,
+        to_lat: toLat,
+        to_lng: toLng,
         departure_time: new Date(departureTime).toISOString(),
         available_seats: parseInt(availableSeats),
         fare_per_seat: parseFloat(farePerSeat),
@@ -159,14 +188,14 @@ const PostRide = () => {
   return (
     <div className="min-h-screen bg-background pb-6">
       {/* Header */}
-      <div className="bg-primary text-white p-6 rounded-b-3xl shadow-lg mb-6">
+      <div className="bg-primary text-primary-foreground p-6 rounded-b-3xl shadow-lg mb-6">
         <div className="flex items-center gap-3 mb-2">
-          <Button variant="ghost" size="icon" className="text-white" onClick={() => navigate("/")}>
+          <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/20" onClick={() => navigate("/")}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <h1 className="text-2xl font-bold">Post a Ride</h1>
         </div>
-        <p className="text-white/80 text-sm ml-11">Share your journey and earn</p>
+        <p className="text-primary-foreground/80 text-sm ml-11">Share your journey and earn</p>
       </div>
 
       <div className="px-4">
@@ -177,33 +206,19 @@ const PostRide = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="from" className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-primary" />
-                  From
-                </Label>
-                <Input
-                  id="from"
-                  placeholder="Starting location"
-                  value={fromLocation}
-                  onChange={(e) => setFromLocation(e.target.value)}
-                  required
-                />
-              </div>
+              <LocationPicker
+                label="From"
+                value={fromLocation}
+                onChange={handleFromChange}
+                placeholder="Starting location"
+              />
 
-              <div className="space-y-2">
-                <Label htmlFor="to" className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-primary" />
-                  To
-                </Label>
-                <Input
-                  id="to"
-                  placeholder="Destination"
-                  value={toLocation}
-                  onChange={(e) => setToLocation(e.target.value)}
-                  required
-                />
-              </div>
+              <LocationPicker
+                label="To"
+                value={toLocation}
+                onChange={handleToChange}
+                placeholder="Destination"
+              />
 
               <div className="space-y-2">
                 <Label htmlFor="datetime" className="flex items-center gap-2">
@@ -232,7 +247,7 @@ const PostRide = () => {
                   required
                 />
                 <p className="text-xs text-muted-foreground">
-                  Enter the approximate distance for automatic fare calculation
+                  {fromLat && toLat ? "Auto-calculated from map locations" : "Enter distance or select locations on map for auto-calculation"}
                 </p>
               </div>
 
