@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -14,8 +14,7 @@ import { useRealtimeRides } from "@/hooks/useRealtimeRides";
 import { calculateFare } from "@/lib/fareCalculator";
 import { FareBreakdownDialog } from "@/components/FareBreakdownDialog";
 import { Database } from "@/integrations/supabase/types";
-import RideMap from "@/components/RideMap";
-import { useMapboxToken } from "@/components/MapboxTokenInput";
+import LeafletMap from "@/components/LeafletMap";
 
 const bookingSchema = z.object({
   seatsRequested: z.coerce.number().int("Seats must be a whole number").min(1, "At least 1 seat required").max(8, "Maximum 8 seats"),
@@ -28,7 +27,6 @@ const SearchRides = () => {
   const [selectedRideBreakdown, setSelectedRideBreakdown] = useState<ReturnType<typeof calculateFare> | null>(null);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
-  const { token: mapboxToken } = useMapboxToken();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -42,7 +40,6 @@ const SearchRides = () => {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Real-time hook automatically fetches and updates rides
     if (rides.length === 0 && !loading) {
       toast({
         title: "No rides found",
@@ -53,7 +50,6 @@ const SearchRides = () => {
 
   const handleBookRide = async (rideId: string, farePerSeat: number) => {
     try {
-      // Validate seats requested
       const validation = bookingSchema.safeParse({ seatsRequested: 1 });
       if (!validation.success) {
         throw new Error(validation.error.errors[0].message);
@@ -72,7 +68,6 @@ const SearchRides = () => {
 
       if (error) throw error;
 
-      // Refresh rides (will trigger re-render via hook)
       toast({
         title: "Booking Request Sent!",
         description: "The driver will review your request",
@@ -102,36 +97,34 @@ const SearchRides = () => {
   return (
     <div className="min-h-screen bg-background pb-6">
       {/* Header */}
-      <div className="bg-primary text-white p-6 rounded-b-3xl shadow-lg mb-6">
+      <div className="bg-primary text-primary-foreground p-6 rounded-b-3xl shadow-lg mb-6">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="text-white" onClick={() => navigate("/")}>
+            <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/20" onClick={() => navigate("/")}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <h1 className="text-2xl font-bold">Search Rides</h1>
           </div>
-          {mapboxToken && (
-            <div className="flex gap-1 bg-white/20 rounded-lg p-1">
-              <Button
-                variant={viewMode === "list" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("list")}
-                className={viewMode === "list" ? "" : "text-white hover:bg-white/20"}
-              >
-                <List className="w-4 h-4" />
-              </Button>
-              <Button
-                variant={viewMode === "map" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("map")}
-                className={viewMode === "map" ? "" : "text-white hover:bg-white/20"}
-              >
-                <Map className="w-4 h-4" />
-              </Button>
-            </div>
-          )}
+          <div className="flex gap-1 bg-primary-foreground/20 rounded-lg p-1">
+            <Button
+              variant={viewMode === "list" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("list")}
+              className={viewMode === "list" ? "" : "text-primary-foreground hover:bg-primary-foreground/20"}
+            >
+              <List className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === "map" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("map")}
+              className={viewMode === "map" ? "" : "text-primary-foreground hover:bg-primary-foreground/20"}
+            >
+              <Map className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
-        <p className="text-white/80 text-sm ml-11">Find your perfect ride</p>
+        <p className="text-primary-foreground/80 text-sm ml-11">Find your perfect ride</p>
       </div>
 
       <div className="px-4 space-y-6">
@@ -190,10 +183,19 @@ const SearchRides = () => {
         </Card>
 
         {/* Map View */}
-        {viewMode === "map" && mapboxToken && (
+        {viewMode === "map" && (
           <div className="space-y-3">
             <h2 className="text-lg font-semibold px-2">{rides.length} Available Rides</h2>
-            <RideMap markers={mapMarkers} className="h-[400px]" showTokenInput={false} />
+            <LeafletMap 
+              markers={mapMarkers} 
+              className="h-[400px]"
+              zoom={mapMarkers.length > 0 ? 10 : 6}
+            />
+            {mapMarkers.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center">
+                No rides with map coordinates yet. Rides will appear here when drivers add locations via map.
+              </p>
+            )}
           </div>
         )}
 
@@ -207,7 +209,7 @@ const SearchRides = () => {
                   {/* Driver Info */}
                   <div className="flex items-center gap-3">
                     <Avatar>
-                      <AvatarFallback className="bg-primary text-white">
+                      <AvatarFallback className="bg-primary text-primary-foreground">
                         {ride.driver?.full_name?.charAt(0) || "D"}
                       </AvatarFallback>
                     </Avatar>
@@ -215,11 +217,11 @@ const SearchRides = () => {
                       <div className="flex items-center gap-2">
                         <p className="font-semibold">{ride.driver?.full_name || "Driver"}</p>
                         {ride.driver?.is_phone_verified && (
-                          <Shield className="w-4 h-4 text-success" />
+                          <Shield className="w-4 h-4 text-green-500" />
                         )}
                       </div>
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <Star className="w-3 h-3 fill-warning text-warning" />
+                        <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
                         <span>0.0</span>
                       </div>
                     </div>
@@ -301,11 +303,6 @@ const SearchRides = () => {
               <p className="text-sm mt-1">Try different locations or dates</p>
             </CardContent>
           </Card>
-        )}
-
-        {/* Map Token Input (shown only in list view when no token) */}
-        {viewMode === "list" && !mapboxToken && (
-          <RideMap markers={[]} showTokenInput={true} />
         )}
       </div>
 

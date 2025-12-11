@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,21 +18,20 @@ interface Notification {
   type: string;
   read: boolean;
   created_at: string;
+  user_id: string;
 }
 
 export default function VerificationNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    loadNotifications();
-    subscribeToNotifications();
-  }, []);
-
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+
+    setUserId(user.id);
 
     const { data, error } = await supabase
       .from("verification_notifications")
@@ -45,21 +44,29 @@ export default function VerificationNotifications() {
       setNotifications(data);
       setUnreadCount(data.filter(n => !n.read).length);
     }
-  };
+  }, []);
 
-  const subscribeToNotifications = () => {
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
+
+  // Set up real-time subscription
+  useEffect(() => {
+    if (!userId) return;
+
     const channel = supabase
-      .channel("verification-notifications")
+      .channel(`notifications-${userId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "verification_notifications",
+          filter: `user_id=eq.${userId}`,
         },
         (payload) => {
           const newNotification = payload.new as Notification;
-          setNotifications((prev) => [newNotification, ...prev]);
+          setNotifications((prev) => [newNotification, ...prev.slice(0, 9)]);
           setUnreadCount((prev) => prev + 1);
           
           toast({
@@ -69,12 +76,34 @@ export default function VerificationNotifications() {
           });
         }
       )
-      .subscribe();
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "verification_notifications",
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const updated = payload.new as Notification;
+          setNotifications((prev) =>
+            prev.map((n) => (n.id === updated.id ? updated : n))
+          );
+          // Recalculate unread count
+          setNotifications((prev) => {
+            setUnreadCount(prev.filter(n => !n.read).length);
+            return prev;
+          });
+        }
+      )
+      .subscribe((status) => {
+        console.log("Notifications subscription:", status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  };
+  }, [userId, toast]);
 
   const markAsRead = async (notificationId: string) => {
     const { error } = await supabase
@@ -91,13 +120,12 @@ export default function VerificationNotifications() {
   };
 
   const markAllAsRead = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!userId) return;
 
     const { error } = await supabase
       .from("verification_notifications")
       .update({ read: true })
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("read", false);
 
     if (!error) {

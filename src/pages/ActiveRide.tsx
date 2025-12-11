@@ -6,12 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, MapPin, Navigation } from "lucide-react";
 import { locationService } from "@/services/locationService";
-import { Database } from "@/integrations/supabase/types";
-import RideMap from "@/components/RideMap";
-import { useMapboxToken } from "@/components/MapboxTokenInput";
 import useRealtimeLiveLocations from "@/hooks/useRealtimeLiveLocations";
-
-type LiveLocation = Database['public']['Tables']['live_locations']['Row'];
+import LeafletMap from "@/components/LeafletMap";
 
 const ActiveRide = () => {
   const navigate = useNavigate();
@@ -20,7 +16,6 @@ const ActiveRide = () => {
   const [ride, setRide] = useState<any>(null);
   const [isTracking, setIsTracking] = useState(false);
   const [loading, setLoading] = useState(true);
-  const { token: mapboxToken } = useMapboxToken();
   const { locations } = useRealtimeLiveLocations(rideId);
 
   useEffect(() => {
@@ -86,8 +81,18 @@ const ActiveRide = () => {
         id: "origin",
         lat: ride.from_lat,
         lng: ride.from_lng,
-        label: ride.from_location,
+        label: `Start: ${ride.from_location}`,
         type: "driver",
+      });
+    }
+
+    if (ride?.to_lat && ride?.to_lng) {
+      markers.push({
+        id: "destination",
+        lat: ride.to_lat,
+        lng: ride.to_lng,
+        label: `End: ${ride.to_location}`,
+        type: "passenger",
       });
     }
 
@@ -134,7 +139,7 @@ const ActiveRide = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+      <div className="min-h-screen bg-background p-4">
         <div className="max-w-2xl mx-auto">
           <p className="text-center text-muted-foreground">Loading ride details...</p>
         </div>
@@ -143,7 +148,7 @@ const ActiveRide = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+    <div className="min-h-screen bg-background p-4">
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
           <Button variant="outline" size="icon" onClick={() => navigate('/')}>
@@ -160,23 +165,19 @@ const ActiveRide = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Live Map */}
-            {mapboxToken && (
-              <div className="mb-4">
-                <h3 className="font-medium mb-2">Live Map</h3>
-                <RideMap 
-                  markers={mapMarkers} 
-                  className="h-[300px]" 
-                  showTokenInput={false}
-                  center={ride?.from_lat && ride?.from_lng ? [ride.from_lng, ride.from_lat] : undefined}
-                  zoom={12}
-                />
-              </div>
-            )}
-
-            {!mapboxToken && (
-              <RideMap markers={[]} showTokenInput={true} />
-            )}
+            {/* Live Map - Always shown with free OpenStreetMap */}
+            <div className="mb-4">
+              <h3 className="font-medium mb-2">Live Map</h3>
+              <LeafletMap 
+                markers={mapMarkers} 
+                className="h-[300px]"
+                center={ride?.from_lat && ride?.from_lng ? [ride.from_lat, ride.from_lng] : undefined}
+                zoom={12}
+                showRoute={ride?.from_lat && ride?.to_lat}
+                routeStart={ride?.from_lat && ride?.from_lng ? [ride.from_lat, ride.from_lng] : undefined}
+                routeEnd={ride?.to_lat && ride?.to_lng ? [ride.to_lat, ride.to_lng] : undefined}
+              />
+            </div>
 
             <div>
               <p className="text-sm text-muted-foreground">Departure Time</p>
@@ -220,12 +221,16 @@ const ActiveRide = () => {
 
             {locations.length > 0 && (
               <div className="pt-4 border-t">
-                <h3 className="font-medium mb-2">Live Locations</h3>
+                <h3 className="font-medium mb-2">Live Locations ({locations.length})</h3>
                 <div className="space-y-2">
                   {locations.map((loc) => (
                     <div key={loc.id} className="text-sm p-2 bg-muted rounded">
-                      <p>User: {loc.user_id.substring(0, 8)}...</p>
-                      <p>Location: {loc.latitude.toFixed(6)}, {loc.longitude.toFixed(6)}</p>
+                      <p className="font-medium">
+                        {loc.user_id === ride?.driver_id ? "🚗 Driver" : "👤 Passenger"}
+                      </p>
+                      <p className="text-muted-foreground">
+                        {loc.latitude.toFixed(6)}, {loc.longitude.toFixed(6)}
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         Updated: {new Date(loc.updated_at || '').toLocaleTimeString()}
                       </p>
