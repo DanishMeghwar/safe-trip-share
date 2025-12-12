@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Car, Users, MapPin, Search, Settings, LogOut, Shield, Star, Activity, FileCheck, MessageCircle } from "lucide-react";
+import { Car, Users, MapPin, Search, Settings, LogOut, Star, Activity, FileCheck, MessageCircle } from "lucide-react";
 import VerificationNotifications from "@/components/VerificationNotifications";
+import { VerificationBadges } from "@/components/VerificationBadges";
 import { useRealtimeBookings } from "@/hooks/useRealtimeBookings";
 import { useUserStats } from "@/hooks/useUserStats";
 import { format } from "date-fns";
@@ -18,6 +19,8 @@ const Dashboard = () => {
   const [profile, setProfile] = useState<any>(null);
   const [roles, setRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [driverVerified, setDriverVerified] = useState(false);
+  const [hasVehicle, setHasVehicle] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { bookings } = useRealtimeBookings(user?.id);
@@ -72,9 +75,28 @@ const Dashboard = () => {
         .select("role")
         .eq("user_id", userId);
 
-      // Note: These client-side role checks only control UI visibility.
-      // Actual authorization is enforced server-side via RLS policies.
-      setRoles(rolesData?.map(r => r.role) || []);
+      const userRoles = rolesData?.map(r => r.role) || [];
+      setRoles(userRoles);
+
+      // Check driver verification if user is a driver
+      if (userRoles.includes("driver")) {
+        const { data: driverDocs } = await supabase
+          .from("driver_documents")
+          .select("is_verified")
+          .eq("driver_id", userId)
+          .maybeSingle();
+
+        setDriverVerified(driverDocs?.is_verified || false);
+
+        // Check if user has a vehicle
+        const { data: vehicleData } = await supabase
+          .from("vehicles")
+          .select("id")
+          .eq("driver_id", userId)
+          .maybeSingle();
+
+        setHasVehicle(!!vehicleData);
+      }
     } catch (error: any) {
       console.error("Error loading user data:", error);
     } finally {
@@ -99,18 +121,18 @@ const Dashboard = () => {
   }
 
   if (!user) {
-    return null; // Will redirect via useEffect
+    return null;
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background pb-20">
       {/* Header */}
-      <div className="bg-primary text-white p-6 rounded-b-3xl shadow-lg">
+      <div className="bg-primary text-primary-foreground p-6 rounded-b-3xl shadow-lg">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <Avatar className="w-12 h-12 border-2 border-white">
+            <Avatar className="w-12 h-12 border-2 border-primary-foreground/20">
               <AvatarImage src={profile?.avatar_url} alt={profile?.full_name} />
-              <AvatarFallback className="bg-secondary text-white text-lg">
+              <AvatarFallback className="bg-secondary text-secondary-foreground text-lg">
                 {profile?.full_name?.charAt(0) || "U"}
               </AvatarFallback>
             </Avatar>
@@ -134,18 +156,21 @@ const Dashboard = () => {
           </div>
           <div className="flex gap-2">
             <VerificationNotifications />
-            <Button variant="ghost" size="icon" className="text-white" onClick={handleSignOut}>
+            <Button variant="ghost" size="icon" className="text-primary-foreground" onClick={handleSignOut}>
               <LogOut className="w-5 h-5" />
             </Button>
           </div>
         </div>
 
-        {profile?.is_phone_verified && (
-          <div className="flex items-center gap-2 text-sm bg-white/20 px-3 py-1.5 rounded-full w-fit">
-            <Shield className="w-4 h-4" />
-            <span>Verified User</span>
-          </div>
-        )}
+        {/* Verification Badges */}
+        <div className="mt-2">
+          <VerificationBadges 
+            isPhoneVerified={profile?.is_phone_verified}
+            isCnicVerified={profile?.is_cnic_verified}
+            isDriverVerified={driverVerified}
+            size="sm"
+          />
+        </div>
       </div>
 
       <div className="px-4 mt-6 space-y-4">
@@ -153,7 +178,7 @@ const Dashboard = () => {
         <div className="grid grid-cols-2 gap-4">
           <Card>
             <CardContent className="pt-6 text-center">
-              <Star className="w-8 h-8 text-warning mx-auto mb-2" />
+              <Star className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
               <p className="text-2xl font-bold">{statsLoading ? "..." : rating.toFixed(1)}</p>
               <p className="text-sm text-muted-foreground">Rating</p>
             </CardContent>
@@ -171,6 +196,22 @@ const Dashboard = () => {
         <div className="space-y-3">
           <h2 className="text-lg font-semibold px-2">Quick Actions</h2>
 
+          {/* Driver: Vehicle Management (show first if no vehicle) */}
+          {isDriver && !hasVehicle && (
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow border-2 border-orange-400" onClick={() => navigate("/vehicle")}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Car className="w-5 h-5 text-orange-500" />
+                  Add Your Vehicle
+                </CardTitle>
+                <CardDescription>
+                  Required to post rides - add your vehicle details first
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          )}
+
+          {/* Driver: Verification */}
           <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(isDriver ? "/driver-verification" : "/passenger-verification")}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -203,6 +244,18 @@ const Dashboard = () => {
                   Post a Ride
                 </CardTitle>
                 <CardDescription>Offer a ride and earn money</CardDescription>
+              </CardHeader>
+            </Card>
+          )}
+
+          {isDriver && hasVehicle && (
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate("/vehicle")}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Car className="w-5 h-5 text-primary" />
+                  Manage Vehicle
+                </CardTitle>
+                <CardDescription>Update your vehicle information</CardDescription>
               </CardHeader>
             </Card>
           )}

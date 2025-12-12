@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Phone, CreditCard, Shield, Upload, FileCheck, Car, Camera } from "lucide-react";
+import { ArrowLeft, Phone, CreditCard, Shield, FileCheck, Car, Camera } from "lucide-react";
 import { z } from "zod";
+import { VerificationBadges } from "@/components/VerificationBadges";
 
 const profileSchema = z.object({
   phone: z.string()
@@ -26,6 +27,8 @@ const Profile = () => {
   const [phone, setPhone] = useState("");
   const [cnic, setCnic] = useState("");
   const [roles, setRoles] = useState<string[]>([]);
+  const [driverVerified, setDriverVerified] = useState(false);
+  const [hasVehicle, setHasVehicle] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -55,6 +58,24 @@ const Profile = () => {
       setProfile(data);
       setPhone(data?.phone || "");
       setCnic(data?.cnic || "");
+
+      // Check driver verification status
+      const { data: driverDocs } = await supabase
+        .from("driver_documents")
+        .select("is_verified")
+        .eq("driver_id", user.id)
+        .maybeSingle();
+
+      setDriverVerified(driverDocs?.is_verified || false);
+
+      // Check if user has a vehicle
+      const { data: vehicleData } = await supabase
+        .from("vehicles")
+        .select("id")
+        .eq("driver_id", user.id)
+        .maybeSingle();
+
+      setHasVehicle(!!vehicleData);
     } catch (error: any) {
       console.error("Error loading profile:", error);
     }
@@ -80,7 +101,6 @@ const Profile = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file
     if (!file.type.startsWith('image/')) {
       toast({
         variant: "destructive",
@@ -104,22 +124,19 @@ const Profile = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Upload to Supabase storage
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
       
-      const { error: uploadError, data } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(fileName, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
 
-      // Update profile
       const { error: updateError } = await supabase
         .from("profiles")
         .update({ avatar_url: publicUrl })
@@ -149,7 +166,6 @@ const Profile = () => {
     setLoading(true);
 
     try {
-      // Validate input
       const validation = profileSchema.safeParse({ phone, cnic });
       if (!validation.success) {
         throw new Error(validation.error.errors[0].message);
@@ -188,14 +204,14 @@ const Profile = () => {
   return (
     <div className="min-h-screen bg-background pb-6">
       {/* Header */}
-      <div className="bg-primary text-white p-6 rounded-b-3xl shadow-lg mb-6">
+      <div className="bg-primary text-primary-foreground p-6 rounded-b-3xl shadow-lg mb-6">
         <div className="flex items-center gap-3 mb-2">
-          <Button variant="ghost" size="icon" className="text-white" onClick={() => navigate("/")}>
+          <Button variant="ghost" size="icon" className="text-primary-foreground" onClick={() => navigate("/")}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <h1 className="text-2xl font-bold">Profile & Verification</h1>
         </div>
-        <p className="text-white/80 text-sm ml-11">Complete your profile for better trust</p>
+        <p className="text-primary-foreground/80 text-sm ml-11">Complete your profile for better trust</p>
       </div>
 
       <div className="px-4 space-y-4">
@@ -206,7 +222,7 @@ const Profile = () => {
               <div className="relative">
                 <Avatar className="w-32 h-32 border-4 border-primary/20">
                   <AvatarImage src={profile?.avatar_url} alt={profile?.full_name} />
-                  <AvatarFallback className="bg-primary text-white text-4xl">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-4xl">
                     {profile?.full_name?.charAt(0) || "U"}
                   </AvatarFallback>
                 </Avatar>
@@ -214,7 +230,7 @@ const Profile = () => {
                   htmlFor="avatar-upload" 
                   className="absolute bottom-0 right-0 w-10 h-10 bg-primary rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:bg-primary/90 transition-colors"
                 >
-                  <Camera className="w-5 h-5 text-white" />
+                  <Camera className="w-5 h-5 text-primary-foreground" />
                   <input
                     id="avatar-upload"
                     type="file"
@@ -227,9 +243,14 @@ const Profile = () => {
               </div>
               <div className="text-center">
                 <h2 className="text-xl font-bold">{profile?.full_name}</h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground mb-2">
                   {uploading ? "Uploading..." : "Tap camera icon to change"}
                 </p>
+                <VerificationBadges 
+                  isPhoneVerified={profile?.is_phone_verified}
+                  isCnicVerified={profile?.is_cnic_verified}
+                  isDriverVerified={driverVerified}
+                />
               </div>
             </div>
           </CardContent>
@@ -246,16 +267,24 @@ const Profile = () => {
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between">
               <span>Phone Number</span>
-              <span className={profile?.is_phone_verified ? "text-success" : "text-muted-foreground"}>
+              <span className={profile?.is_phone_verified ? "text-green-600" : "text-muted-foreground"}>
                 {profile?.is_phone_verified ? "✓ Verified" : "Not Verified"}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span>CNIC</span>
-              <span className={profile?.is_cnic_verified ? "text-success" : "text-muted-foreground"}>
+              <span className={profile?.is_cnic_verified ? "text-green-600" : "text-muted-foreground"}>
                 {profile?.is_cnic_verified ? "✓ Verified" : "Not Verified"}
               </span>
             </div>
+            {isDriver && (
+              <div className="flex items-center justify-between">
+                <span>Driver Documents</span>
+                <span className={driverVerified ? "text-green-600" : "text-muted-foreground"}>
+                  {driverVerified ? "✓ Verified" : "Not Verified"}
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -307,7 +336,32 @@ const Profile = () => {
           </CardContent>
         </Card>
 
-        {/* Document Upload Placeholder */}
+        {/* Driver Vehicle Management */}
+        {isDriver && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Car className="w-5 h-5 text-primary" />
+                Vehicle Management
+              </CardTitle>
+              <CardDescription>
+                {hasVehicle ? "Update your vehicle information" : "Add your vehicle to start posting rides"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                variant={hasVehicle ? "outline" : "default"}
+                className="w-full" 
+                onClick={() => navigate("/vehicle")}
+              >
+                <Car className="w-4 h-4 mr-2" />
+                {hasVehicle ? "Edit Vehicle" : "Add Vehicle"}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Document Verification */}
         <Card>
           <CardHeader>
             <CardTitle>Document Verification</CardTitle>

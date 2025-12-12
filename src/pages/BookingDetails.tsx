@@ -8,6 +8,7 @@ import { ArrowLeft, MapPin, Calendar, Users, DollarSign, XCircle } from 'lucide-
 import { BookingChat } from '@/components/BookingChat';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { VerifiedBadge } from '@/components/VerificationBadges';
 
 type BookingWithDetails = {
   id: string;
@@ -15,15 +16,18 @@ type BookingWithDetails = {
   seats_requested: number;
   total_fare: number;
   pickup_location: string | null;
+  passenger_id: string;
   ride: {
     from_location: string;
     to_location: string;
     departure_time: string;
     fare_per_seat: number;
+    driver_id: string;
     driver: {
       full_name: string;
       phone: string | null;
       is_phone_verified: boolean;
+      is_cnic_verified: boolean;
     };
   };
 };
@@ -36,6 +40,7 @@ const BookingDetails = () => {
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [driverVerified, setDriverVerified] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -55,15 +60,18 @@ const BookingDetails = () => {
           seats_requested,
           total_fare,
           pickup_location,
+          passenger_id,
           ride:rides (
             from_location,
             to_location,
             departure_time,
             fare_per_seat,
+            driver_id,
             driver:profiles!driver_id (
               full_name,
               phone,
-              is_phone_verified
+              is_phone_verified,
+              is_cnic_verified
             )
           )
         `)
@@ -74,6 +82,15 @@ const BookingDetails = () => {
         console.error('Error fetching booking:', error);
       } else if (data) {
         setBooking(data as any);
+        
+        // Check if driver is verified
+        const { data: driverDocs } = await supabase
+          .from('driver_documents')
+          .select('is_verified')
+          .eq('driver_id', (data as any).ride.driver_id)
+          .maybeSingle();
+        
+        setDriverVerified(driverDocs?.is_verified || false);
       }
       setLoading(false);
     };
@@ -95,7 +112,7 @@ const BookingDetails = () => {
   if (!booking) {
     return (
       <div className="min-h-screen bg-background p-4">
-        <Button variant="ghost" onClick={() => navigate('/dashboard')}>
+        <Button variant="ghost" onClick={() => navigate('/')}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
@@ -108,8 +125,8 @@ const BookingDetails = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background pb-20">
-      <div className="bg-primary text-white p-4 rounded-b-3xl shadow-lg">
-        <Button variant="ghost" onClick={() => navigate('/dashboard')} className="text-white mb-2">
+      <div className="bg-primary text-primary-foreground p-4 rounded-b-3xl shadow-lg">
+        <Button variant="ghost" onClick={() => navigate('/')} className="text-primary-foreground mb-2">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
@@ -180,25 +197,35 @@ const BookingDetails = () => {
             <CardTitle>Driver Information</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Name</span>
-                <span className="text-sm text-muted-foreground">
-                  {booking.ride.driver.full_name}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {booking.ride.driver.full_name}
+                  </span>
+                  <VerifiedBadge verified={driverVerified} />
+                </div>
               </div>
               {booking.ride.driver.phone && (
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Phone</span>
-                  <span className="text-sm text-muted-foreground">
-                    {booking.ride.driver.phone}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      {booking.ride.driver.phone}
+                    </span>
+                    {booking.ride.driver.is_phone_verified && (
+                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                        Verified
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               )}
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Verification</span>
-                <Badge variant={booking.ride.driver.is_phone_verified ? 'default' : 'secondary'}>
-                  {booking.ride.driver.is_phone_verified ? 'Verified' : 'Unverified'}
+                <span className="text-sm font-medium">CNIC Verified</span>
+                <Badge variant={booking.ride.driver.is_cnic_verified ? 'default' : 'secondary'}>
+                  {booking.ride.driver.is_cnic_verified ? 'Yes' : 'No'}
                 </Badge>
               </div>
             </div>
@@ -206,7 +233,7 @@ const BookingDetails = () => {
         </Card>
 
         {/* Cancel Button for pending bookings */}
-        {booking.status === 'pending' && currentUserId === (booking as any).passenger_id && (
+        {booking.status === 'pending' && currentUserId === booking.passenger_id && (
           <Button
             variant="destructive"
             className="w-full"
