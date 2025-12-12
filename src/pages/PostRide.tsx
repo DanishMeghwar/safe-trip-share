@@ -130,7 +130,6 @@ const PostRide = () => {
       if (!user) throw new Error("Not authenticated");
 
       // Check for vehicle
-      let vehicleId;
       const { data: vehicles } = await supabase
         .from("vehicles")
         .select("id")
@@ -140,14 +139,19 @@ const PostRide = () => {
       if (!vehicles || vehicles.length === 0) {
         toast({
           variant: "destructive",
-          title: "No Vehicle",
-          description: "Please add a vehicle to your profile first",
+          title: "No Vehicle Found",
+          description: "You need to add a vehicle before posting a ride.",
+          action: (
+            <Button variant="outline" size="sm" onClick={() => navigate("/vehicle")}>
+              Add Vehicle
+            </Button>
+          ),
         });
-        navigate("/profile");
+        setLoading(false);
         return;
       }
 
-      vehicleId = vehicles[0].id;
+      const vehicleId = vehicles[0].id;
 
       const { error } = await supabase.from("rides").insert({
         driver_id: user.id,

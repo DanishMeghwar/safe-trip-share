@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Search, MapPin, Calendar, Users, DollarSign, Star, Shield, Info, Map, List } from "lucide-react";
+import { ArrowLeft, Search, MapPin, Calendar, Users, DollarSign, Star, Shield, Info, Map, List, CheckCircle } from "lucide-react";
 import { z } from "zod";
 import { useRealtimeRides } from "@/hooks/useRealtimeRides";
 import { calculateFare } from "@/lib/fareCalculator";
@@ -217,7 +217,10 @@ const SearchRides = () => {
                       <div className="flex items-center gap-2">
                         <p className="font-semibold">{ride.driver?.full_name || "Driver"}</p>
                         {ride.driver?.is_phone_verified && (
-                          <Shield className="w-4 h-4 text-green-500" />
+                          <Badge variant="outline" className="text-xs px-1.5 py-0.5 bg-green-50 text-green-700 border-green-200">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Verified
+                          </Badge>
                         )}
                       </div>
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">

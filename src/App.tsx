@@ -18,6 +18,7 @@ import AdminUserManagement from "./pages/AdminUserManagement";
 import DriverVerification from "./pages/DriverVerification";
 import PassengerVerification from "./pages/PassengerVerification";
 import BookingDetails from "./pages/BookingDetails";
+import VehicleManagement from "./pages/VehicleManagement";
 import NotFound from "./pages/NotFound";
 import { NetworkStatus } from "./components/NetworkStatus";
 import { pushNotificationService } from "./services/pushNotificationService";
@@ -56,6 +57,7 @@ const App = () => {
             <Route path="/post-ride" element={<PostRide />} />
             <Route path="/search-rides" element={<SearchRides />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/vehicle" element={<VehicleManagement />} />
             <Route path="/ride/:rideId" element={<ActiveRide />} />
             <Route path="/booking/:bookingId" element={<BookingDetails />} />
             <Route path="/admin" element={<AdminDashboard />} />
