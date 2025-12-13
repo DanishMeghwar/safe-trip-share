@@ -41,19 +41,49 @@ export const useBookingsWithPassengers = () => {
 
     fetchBookings();
 
-    // Subscribe to realtime updates
+    // Subscribe to realtime updates - optimized to update only changed items
     const channel = supabase
       .channel("admin-bookings-with-passengers")
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
           table: "bookings",
         },
-        () => {
-          // Refetch on any change
-          fetchBookings();
+        async (payload) => {
+          const { data } = await supabase
+            .from("bookings")
+            .select(`*, passenger:profiles!passenger_id (full_name, phone)`)
+            .eq("id", payload.new.id)
+            .single();
+          if (data) {
+            setBookings(prev => [data as BookingWithPassenger, ...prev]);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "bookings",
+        },
+        (payload) => {
+          setBookings(prev => 
+            prev.map(b => b.id === payload.new.id ? { ...b, ...payload.new } : b)
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "bookings",
+        },
+        (payload) => {
+          setBookings(prev => prev.filter(b => b.id !== payload.old.id));
         }
       )
       .subscribe();

@@ -60,42 +60,25 @@ const Dashboard = () => {
 
   const loadUserData = async (userId: string) => {
     try {
-      // Load profile
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
+      // Parallel fetch for better performance
+      const [profileResult, rolesResult] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", userId).single(),
+        supabase.from("user_roles").select("role").eq("user_id", userId)
+      ]);
 
-      setProfile(profileData);
-
-      // Load roles
-      const { data: rolesData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId);
-
-      const userRoles = rolesData?.map(r => r.role) || [];
+      setProfile(profileResult.data);
+      const userRoles = rolesResult.data?.map(r => r.role) || [];
       setRoles(userRoles);
 
-      // Check driver verification if user is a driver
+      // Only fetch driver-specific data if user is a driver
       if (userRoles.includes("driver")) {
-        const { data: driverDocs } = await supabase
-          .from("driver_documents")
-          .select("is_verified")
-          .eq("driver_id", userId)
-          .maybeSingle();
+        const [driverDocsResult, vehicleResult] = await Promise.all([
+          supabase.from("driver_documents").select("is_verified").eq("driver_id", userId).maybeSingle(),
+          supabase.from("vehicles").select("id").eq("driver_id", userId).maybeSingle()
+        ]);
 
-        setDriverVerified(driverDocs?.is_verified || false);
-
-        // Check if user has a vehicle
-        const { data: vehicleData } = await supabase
-          .from("vehicles")
-          .select("id")
-          .eq("driver_id", userId)
-          .maybeSingle();
-
-        setHasVehicle(!!vehicleData);
+        setDriverVerified(driverDocsResult.data?.is_verified || false);
+        setHasVehicle(!!vehicleResult.data);
       }
     } catch (error: any) {
       console.error("Error loading user data:", error);

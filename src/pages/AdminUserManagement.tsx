@@ -4,10 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Users, Shield, UserPlus, UserMinus } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Users, Shield, UserMinus, Search, Phone, BadgeCheck } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -15,6 +17,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type UserRole = "admin" | "driver" | "passenger";
 
@@ -22,6 +35,9 @@ interface UserWithRoles {
   id: string;
   full_name: string;
   phone: string | null;
+  is_phone_verified?: boolean;
+  is_cnic_verified?: boolean;
+  avatar_url?: string | null;
   roles: UserRole[];
 }
 
@@ -30,6 +46,8 @@ export default function AdminUserManagement() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<UserWithRoles[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<UserWithRoles[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [updatingUser, setUpdatingUser] = useState<string | null>(null);
 
   useEffect(() => {
@@ -41,6 +59,16 @@ export default function AdminUserManagement() {
       fetchUsers();
     }
   }, [isAdmin]);
+
+  useEffect(() => {
+    // Filter users based on search query
+    const filtered = users.filter(user =>
+      user.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.phone?.includes(searchQuery) ||
+      user.roles.some(role => role.includes(searchQuery.toLowerCase()))
+    );
+    setFilteredUsers(filtered);
+  }, [users, searchQuery]);
 
   const checkAdminAccess = async () => {
     try {
@@ -74,27 +102,24 @@ export default function AdminUserManagement() {
 
   const fetchUsers = async () => {
     try {
-      // Fetch all profiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, full_name, phone")
-        .order("full_name");
+      // Parallel fetch for better performance
+      const [profilesResult, rolesResult] = await Promise.all([
+        supabase.from("profiles").select("id, full_name, phone, is_phone_verified, is_cnic_verified, avatar_url").order("full_name"),
+        supabase.from("user_roles").select("user_id, role")
+      ]);
 
-      if (profilesError) throw profilesError;
-
-      // Fetch all user roles
-      const { data: userRoles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("user_id, role");
-
-      if (rolesError) throw rolesError;
+      if (profilesResult.error) throw profilesResult.error;
+      if (rolesResult.error) throw rolesResult.error;
 
       // Combine the data
-      const usersWithRoles: UserWithRoles[] = (profiles || []).map(profile => ({
+      const usersWithRoles: UserWithRoles[] = (profilesResult.data || []).map(profile => ({
         id: profile.id,
         full_name: profile.full_name,
         phone: profile.phone,
-        roles: (userRoles || [])
+        is_phone_verified: profile.is_phone_verified,
+        is_cnic_verified: profile.is_cnic_verified,
+        avatar_url: profile.avatar_url,
+        roles: (rolesResult.data || [])
           .filter(ur => ur.user_id === profile.id)
           .map(ur => ur.role as UserRole)
       }));
@@ -186,7 +211,7 @@ export default function AdminUserManagement() {
           </div>
           <Badge variant="default" className="text-lg px-4 py-2">
             <Users className="h-4 w-4 mr-2" />
-            {users.length} Users
+            {filteredUsers.length} Users
           </Badge>
         </div>
 
@@ -197,31 +222,73 @@ export default function AdminUserManagement() {
               All Users & Roles
             </CardTitle>
             <CardDescription>View and manage user roles in the system</CardDescription>
+            <div className="relative mt-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, phone, or role..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[600px]">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Phone</TableHead>
+                    <TableHead>User</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Verification</TableHead>
                     <TableHead>Current Roles</TableHead>
                     <TableHead>Add Role</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.length === 0 ? (
+                  {filteredUsers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground">
                         No users found
                       </TableCell>
                     </TableRow>
                   ) : (
-                    users.map((user) => (
+                    filteredUsers.map((user) => (
                       <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.full_name}</TableCell>
-                        <TableCell>{user.phone || "N/A"}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              <AvatarImage src={user.avatar_url || undefined} />
+                              <AvatarFallback>{user.full_name?.charAt(0) || 'U'}</AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">{user.full_name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Phone className="h-3 w-3 text-muted-foreground" />
+                            {user.phone || "N/A"}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            {user.is_phone_verified && (
+                              <Badge variant="outline" className="text-xs">
+                                <BadgeCheck className="h-3 w-3 mr-1 text-green-500" />
+                                Phone
+                              </Badge>
+                            )}
+                            {user.is_cnic_verified && (
+                              <Badge variant="outline" className="text-xs">
+                                <BadgeCheck className="h-3 w-3 mr-1 text-green-500" />
+                                CNIC
+                              </Badge>
+                            )}
+                            {!user.is_phone_verified && !user.is_cnic_verified && (
+                              <span className="text-xs text-muted-foreground">Not verified</span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <div className="flex gap-2 flex-wrap">
                             {user.roles.length === 0 ? (
@@ -240,8 +307,8 @@ export default function AdminUserManagement() {
                             disabled={updatingUser === user.id}
                             onValueChange={(value) => addRole(user.id, value as UserRole)}
                           >
-                            <SelectTrigger className="w-[150px]">
-                              <SelectValue placeholder="Add role..." />
+                            <SelectTrigger className="w-[130px]">
+                              <SelectValue placeholder="Add role" />
                             </SelectTrigger>
                             <SelectContent>
                               {!user.roles.includes("admin") && (
@@ -257,18 +324,36 @@ export default function AdminUserManagement() {
                           </Select>
                         </TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
+                          <div className="flex gap-1 flex-wrap">
                             {user.roles.map((role) => (
-                              <Button
-                                key={role}
-                                variant="ghost"
-                                size="sm"
-                                disabled={updatingUser === user.id}
-                                onClick={() => removeRole(user.id, role)}
-                              >
-                                <UserMinus className="h-4 w-4 mr-1" />
-                                Remove {role}
-                              </Button>
+                              <AlertDialog key={role}>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={updatingUser === user.id}
+                                    className="text-destructive hover:text-destructive"
+                                  >
+                                    <UserMinus className="h-4 w-4 mr-1" />
+                                    {role}
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Remove {role} role?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to remove the "{role}" role from {user.full_name}? 
+                                      This action can be undone by adding the role back.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => removeRole(user.id, role)}>
+                                      Remove Role
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             ))}
                           </div>
                         </TableCell>
