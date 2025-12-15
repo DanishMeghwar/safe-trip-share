@@ -1,11 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, memo, lazy, Suspense } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { MapPin, Search, Loader2 } from 'lucide-react';
-import { searchLocation, GeocodingResult } from '@/services/geocodingService';
-import LeafletMap from './LeafletMap';
+import { searchLocation, GeocodingResult, reverseGeocode } from '@/services/geocodingService';
 import { cn } from '@/lib/utils';
+
+// Lazy load map for better performance
+const MapboxMap = lazy(() => import('./MapboxMap'));
 
 interface LocationPickerProps {
   label: string;
@@ -15,7 +18,7 @@ interface LocationPickerProps {
   className?: string;
 }
 
-const LocationPicker = ({
+const LocationPicker = memo(({
   label,
   value,
   onChange,
@@ -29,7 +32,7 @@ const LocationPicker = ({
   const [selectedCoords, setSelectedCoords] = useState<[number, number] | null>(null);
   const [showMap, setShowMap] = useState(false);
 
-  // Debounced search
+  // Debounced search with longer delay for better performance
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (searchQuery.length >= 3) {
@@ -42,28 +45,33 @@ const LocationPicker = ({
         setResults([]);
         setShowResults(false);
       }
-    }, 500);
+    }, 800); // Increased debounce for better performance
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
   const handleSelect = useCallback((result: GeocodingResult) => {
-    setSearchQuery(result.displayName.split(',').slice(0, 2).join(','));
+    const shortName = result.displayName.split(',').slice(0, 2).join(',');
+    setSearchQuery(shortName);
     setSelectedCoords([result.lat, result.lng]);
-    onChange(result.displayName.split(',').slice(0, 2).join(','), result.lat, result.lng);
+    onChange(shortName, result.lat, result.lng);
     setShowResults(false);
   }, [onChange]);
 
-  const handleMapClick = useCallback((lat: number, lng: number) => {
+  const handleMapClick = useCallback(async (lat: number, lng: number) => {
     setSelectedCoords([lat, lng]);
-    onChange(searchQuery || `${lat.toFixed(4)}, ${lng.toFixed(4)}`, lat, lng);
-  }, [searchQuery, onChange]);
+    // Reverse geocode to get location name
+    const locationName = await reverseGeocode(lat, lng);
+    const shortName = locationName.split(',').slice(0, 2).join(',');
+    setSearchQuery(shortName);
+    onChange(shortName, lat, lng);
+  }, [onChange]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setSearchQuery(newValue);
     onChange(newValue, null, null);
-  };
+  }, [onChange]);
 
   return (
     <div className={cn('space-y-2', className)}>
@@ -118,29 +126,33 @@ const LocationPicker = ({
         {showMap ? 'Hide Map' : 'Pick on Map'}
       </Button>
 
-      {/* Map */}
+      {/* Lazy loaded Map */}
       {showMap && (
-        <div className="mt-2">
-          <LeafletMap
-            center={selectedCoords || [30.3753, 69.3451]}
-            zoom={selectedCoords ? 14 : 6}
-            markers={selectedCoords ? [{ id: 'selected', lat: selectedCoords[0], lng: selectedCoords[1], type: 'pickup' }] : []}
-            onMapClick={handleMapClick}
-            className="h-[200px]"
-          />
-          <p className="text-xs text-muted-foreground mt-1">
-            Click on the map to select a location
-          </p>
-        </div>
+        <Suspense fallback={<Skeleton className="h-[200px] w-full rounded-lg" />}>
+          <div className="mt-2">
+            <MapboxMap
+              center={selectedCoords || [30.3753, 69.3451]}
+              zoom={selectedCoords ? 14 : 6}
+              markers={selectedCoords ? [{ id: 'selected', lat: selectedCoords[0], lng: selectedCoords[1], type: 'pickup' }] : []}
+              onMapClick={handleMapClick}
+              className="h-[200px]"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Click on the map to select a location
+            </p>
+          </div>
+        </Suspense>
       )}
 
       {selectedCoords && (
         <p className="text-xs text-muted-foreground">
-          Coordinates: {selectedCoords[0].toFixed(4)}, {selectedCoords[1].toFixed(4)}
+          📍 {selectedCoords[0].toFixed(4)}, {selectedCoords[1].toFixed(4)}
         </p>
       )}
     </div>
   );
-};
+});
+
+LocationPicker.displayName = 'LocationPicker';
 
 export default LocationPicker;

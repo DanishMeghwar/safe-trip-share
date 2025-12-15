@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,16 @@ const rideSchema = z.object({
   notes: z.string().max(500, "Notes too long").optional(),
 });
 
+// Cache key for vehicle data
+const VEHICLE_CACHE_KEY = 'user_vehicle_cache';
+
+interface VehicleCache {
+  userId: string;
+  vehicleId: string;
+  vehicleType: Database['public']['Enums']['vehicle_type'];
+  timestamp: number;
+}
+
 const PostRide = () => {
   const [loading, setLoading] = useState(false);
   const [fromLocation, setFromLocation] = useState("");
@@ -42,26 +52,51 @@ const PostRide = () => {
   const [farePerSeat, setFarePerSeat] = useState("");
   const [distance, setDistance] = useState("");
   const [notes, setNotes] = useState("");
+  const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [vehicleType, setVehicleType] = useState<Database['public']['Enums']['vehicle_type'] | null>(null);
   const [suggestedFare, setSuggestedFare] = useState<ReturnType<typeof getSuggestedFareRange> | null>(null);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Fetch user's vehicle type
+  // Fetch user's vehicle with caching
   useEffect(() => {
     const fetchVehicle = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Check cache first
+      try {
+        const cached = localStorage.getItem(VEHICLE_CACHE_KEY);
+        if (cached) {
+          const cacheData: VehicleCache = JSON.parse(cached);
+          // Cache valid for 1 hour and same user
+          if (cacheData.userId === user.id && Date.now() - cacheData.timestamp < 3600000) {
+            setVehicleId(cacheData.vehicleId);
+            setVehicleType(cacheData.vehicleType);
+            return;
+          }
+        }
+      } catch {}
+
       const { data: vehicle } = await supabase
         .from("vehicles")
-        .select("vehicle_type")
+        .select("id, vehicle_type")
         .eq("driver_id", user.id)
         .single();
 
       if (vehicle) {
+        setVehicleId(vehicle.id);
         setVehicleType(vehicle.vehicle_type);
+        
+        // Cache the result
+        const cacheData: VehicleCache = {
+          userId: user.id,
+          vehicleId: vehicle.id,
+          vehicleType: vehicle.vehicle_type,
+          timestamp: Date.now(),
+        };
+        localStorage.setItem(VEHICLE_CACHE_KEY, JSON.stringify(cacheData));
       }
     };
 
@@ -129,33 +164,37 @@ const PostRide = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Check for vehicle
-      const { data: vehicles } = await supabase
-        .from("vehicles")
-        .select("id")
-        .eq("driver_id", user.id)
-        .limit(1);
+      // Use cached vehicle ID if available
+      let finalVehicleId = vehicleId;
+      
+      if (!finalVehicleId) {
+        // Fallback: fetch from database
+        const { data: vehicles } = await supabase
+          .from("vehicles")
+          .select("id")
+          .eq("driver_id", user.id)
+          .limit(1);
 
-      if (!vehicles || vehicles.length === 0) {
-        toast({
-          variant: "destructive",
-          title: "No Vehicle Found",
-          description: "You need to add a vehicle before posting a ride.",
-          action: (
-            <Button variant="outline" size="sm" onClick={() => navigate("/vehicle")}>
-              Add Vehicle
-            </Button>
-          ),
-        });
-        setLoading(false);
-        return;
+        if (!vehicles || vehicles.length === 0) {
+          toast({
+            variant: "destructive",
+            title: "No Vehicle Found",
+            description: "You need to add a vehicle before posting a ride.",
+            action: (
+              <Button variant="outline" size="sm" onClick={() => navigate("/vehicle")}>
+                Add Vehicle
+              </Button>
+            ),
+          });
+          setLoading(false);
+          return;
+        }
+        finalVehicleId = vehicles[0].id;
       }
-
-      const vehicleId = vehicles[0].id;
 
       const { error } = await supabase.from("rides").insert({
         driver_id: user.id,
-        vehicle_id: vehicleId,
+        vehicle_id: finalVehicleId,
         from_location: fromLocation,
         to_location: toLocation,
         from_lat: fromLat,

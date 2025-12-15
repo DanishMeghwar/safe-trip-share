@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,18 +7,24 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Search, MapPin, Calendar, Users, DollarSign, Star, Shield, Info, Map, List, CheckCircle } from "lucide-react";
+import { ArrowLeft, Search, MapPin, Calendar, Users, DollarSign, Star, Info, Map, List, CheckCircle, Clock } from "lucide-react";
 import { z } from "zod";
 import { useRealtimeRides } from "@/hooks/useRealtimeRides";
 import { calculateFare } from "@/lib/fareCalculator";
 import { FareBreakdownDialog } from "@/components/FareBreakdownDialog";
 import { Database } from "@/integrations/supabase/types";
-import LeafletMap from "@/components/LeafletMap";
+
+// Lazy load map for better performance
+const MapboxMap = lazy(() => import("@/components/MapboxMap"));
 
 const bookingSchema = z.object({
   seatsRequested: z.coerce.number().int("Seats must be a whole number").min(1, "At least 1 seat required").max(8, "Maximum 8 seats"),
 });
+
+type SortOption = "time" | "fare_low" | "fare_high";
 
 const SearchRides = () => {
   const [fromLocation, setFromLocation] = useState("");
@@ -27,25 +33,40 @@ const SearchRides = () => {
   const [selectedRideBreakdown, setSelectedRideBreakdown] = useState<ReturnType<typeof calculateFare> | null>(null);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const [sortBy, setSortBy] = useState<SortOption>("time");
+  const [selectedRideId, setSelectedRideId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Use real-time rides hook
+  // Use real-time rides hook - locations are now optional for flexible search
   const { rides, loading } = useRealtimeRides({
     status: ['scheduled', 'active'],
-    fromLocation: fromLocation || undefined,
-    toLocation: toLocation || undefined,
+    fromLocation: fromLocation.length >= 3 ? fromLocation : undefined,
+    toLocation: toLocation.length >= 3 ? toLocation : undefined,
     date: departureDate || undefined,
   });
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (rides.length === 0 && !loading) {
-      toast({
-        title: "No rides found",
-        description: "Try adjusting your search criteria",
-      });
+  // Sort and filter rides
+  const sortedRides = useMemo(() => {
+    const sorted = [...rides];
+    switch (sortBy) {
+      case "fare_low":
+        return sorted.sort((a, b) => a.fare_per_seat - b.fare_per_seat);
+      case "fare_high":
+        return sorted.sort((a, b) => b.fare_per_seat - a.fare_per_seat);
+      case "time":
+      default:
+        return sorted.sort((a, b) => 
+          new Date(a.departure_time).getTime() - new Date(b.departure_time).getTime()
+        );
     }
+  }, [rides, sortBy]);
+
+  const handleShowAllRides = () => {
+    setFromLocation("");
+    setToLocation("");
+    // Set today's date to show upcoming rides
+    setDepartureDate(new Date().toISOString().split('T')[0]);
   };
 
   const handleBookRide = async (rideId: string, farePerSeat: number) => {
@@ -81,18 +102,29 @@ const SearchRides = () => {
     }
   };
 
-  // Prepare map markers from rides
+  // Prepare map markers from rides with enhanced info
   const mapMarkers = useMemo(() => {
-    return rides
+    return sortedRides
       .filter((ride) => ride.from_lat && ride.from_lng)
       .map((ride) => ({
         id: ride.id,
         lat: ride.from_lat!,
         lng: ride.from_lng!,
-        label: `${ride.from_location} → ${ride.to_location} (PKR ${ride.fare_per_seat})`,
+        label: `${ride.from_location} → ${ride.to_location}`,
         type: "pickup" as const,
+        fare: ride.fare_per_seat,
+        time: new Date(ride.departure_time).toLocaleTimeString("en-PK", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
       }));
-  }, [rides]);
+  }, [sortedRides]);
+
+  // Get selected ride for route display
+  const selectedRide = useMemo(() => 
+    sortedRides.find(r => r.id === selectedRideId),
+    [sortedRides, selectedRideId]
+  );
 
   return (
     <div className="min-h-screen bg-background pb-6">
@@ -130,15 +162,15 @@ const SearchRides = () => {
       <div className="px-4 space-y-6">
         {/* Search Form */}
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3">
             <CardTitle className="text-lg">Where are you going?</CardTitle>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSearch} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="search-from" className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-primary" />
-                  From
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="search-from" className="flex items-center gap-2 text-sm">
+                  <MapPin className="w-3.5 h-3.5 text-primary" />
+                  From (optional)
                 </Label>
                 <Input
                   id="search-from"
@@ -148,10 +180,10 @@ const SearchRides = () => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="search-to" className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-primary" />
-                  To
+              <div className="space-y-1.5">
+                <Label htmlFor="search-to" className="flex items-center gap-2 text-sm">
+                  <MapPin className="w-3.5 h-3.5 text-primary" />
+                  To (optional)
                 </Label>
                 <Input
                   id="search-to"
@@ -160,10 +192,12 @@ const SearchRides = () => {
                   onChange={(e) => setToLocation(e.target.value)}
                 />
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="search-date" className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-primary" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="search-date" className="flex items-center gap-2 text-sm">
+                  <Calendar className="w-3.5 h-3.5 text-primary" />
                   Date
                 </Label>
                 <Input
@@ -174,36 +208,104 @@ const SearchRides = () => {
                 />
               </div>
 
-              <Button type="submit" className="w-full" size="lg" disabled={loading}>
-                <Search className="w-4 h-4 mr-2" />
-                {loading ? "Searching..." : "Search Rides"}
-              </Button>
-            </form>
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-2 text-sm">
+                  <Clock className="w-3.5 h-3.5 text-primary" />
+                  Sort by
+                </Label>
+                <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="time">Departure Time</SelectItem>
+                    <SelectItem value="fare_low">Fare: Low to High</SelectItem>
+                    <SelectItem value="fare_high">Fare: High to Low</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Button 
+              onClick={handleShowAllRides} 
+              variant="outline" 
+              className="w-full"
+              disabled={loading}
+            >
+              <Search className="w-4 h-4 mr-2" />
+              Show All Upcoming Rides
+            </Button>
           </CardContent>
         </Card>
 
-        {/* Map View */}
-        {viewMode === "map" && (
+        {/* Loading State */}
+        {loading && (
           <div className="space-y-3">
-            <h2 className="text-lg font-semibold px-2">{rides.length} Available Rides</h2>
-            <LeafletMap 
-              markers={mapMarkers} 
-              className="h-[400px]"
-              zoom={mapMarkers.length > 0 ? 10 : 6}
-            />
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-[180px] w-full rounded-lg" />
+            ))}
+          </div>
+        )}
+
+        {/* Map View */}
+        {!loading && viewMode === "map" && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">{sortedRides.length} Available Rides</h2>
+              {selectedRide && (
+                <Button size="sm" variant="outline" onClick={() => setSelectedRideId(null)}>
+                  Clear Selection
+                </Button>
+              )}
+            </div>
+            
+            <Suspense fallback={<Skeleton className="h-[400px] w-full rounded-lg" />}>
+              <MapboxMap 
+                markers={mapMarkers} 
+                className="h-[400px]"
+                zoom={mapMarkers.length > 0 ? 10 : 6}
+                onMarkerClick={setSelectedRideId}
+                showRoute={!!selectedRide && !!selectedRide.from_lat && !!selectedRide.to_lat}
+                routeStart={selectedRide ? [selectedRide.from_lat!, selectedRide.from_lng!] : undefined}
+                routeEnd={selectedRide ? [selectedRide.to_lat!, selectedRide.to_lng!] : undefined}
+              />
+            </Suspense>
+
+            {/* Selected Ride Card */}
+            {selectedRide && (
+              <Card className="border-primary">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold">{selectedRide.from_location} → {selectedRide.to_location}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(selectedRide.departure_time).toLocaleString("en-PK")}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-primary">PKR {selectedRide.fare_per_seat}</p>
+                      <Button size="sm" onClick={() => handleBookRide(selectedRide.id, selectedRide.fare_per_seat)}>
+                        Book Now
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {mapMarkers.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center">
-                No rides with map coordinates yet. Rides will appear here when drivers add locations via map.
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No rides with map coordinates yet. Select a date to see available rides.
               </p>
             )}
           </div>
         )}
 
         {/* List Results */}
-        {viewMode === "list" && rides.length > 0 && (
+        {!loading && viewMode === "list" && sortedRides.length > 0 && (
           <div className="space-y-3">
-            <h2 className="text-lg font-semibold px-2">{rides.length} Available Rides</h2>
-            {rides.map((ride) => (
+            <h2 className="text-lg font-semibold px-2">{sortedRides.length} Available Rides</h2>
+            {sortedRides.map((ride) => (
               <Card key={ride.id} className="overflow-hidden">
                 <CardContent className="p-4 space-y-4">
                   {/* Driver Info */}
@@ -236,11 +338,12 @@ const SearchRides = () => {
                   {/* Route */}
                   <div className="space-y-2">
                     <div className="flex items-start gap-2">
-                      <MapPin className="w-4 h-4 text-primary mt-0.5" />
+                      <MapPin className="w-4 h-4 text-green-600 mt-0.5" />
                       <div>
                         <p className="font-medium">{ride.from_location}</p>
                         <p className="text-sm text-muted-foreground">
                           {new Date(ride.departure_time).toLocaleString("en-PK", {
+                            weekday: "short",
                             month: "short",
                             day: "numeric",
                             hour: "2-digit",
@@ -250,7 +353,7 @@ const SearchRides = () => {
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
-                      <MapPin className="w-4 h-4 text-primary mt-0.5" />
+                      <MapPin className="w-4 h-4 text-red-500 mt-0.5" />
                       <p className="font-medium">{ride.to_location}</p>
                     </div>
                   </div>
@@ -298,12 +401,12 @@ const SearchRides = () => {
           </div>
         )}
 
-        {viewMode === "list" && !loading && rides.length === 0 && (fromLocation || toLocation || departureDate) && (
+        {!loading && viewMode === "list" && sortedRides.length === 0 && (
           <Card>
             <CardContent className="pt-6 text-center text-muted-foreground">
               <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>No rides found matching your search</p>
-              <p className="text-sm mt-1">Try different locations or dates</p>
+              <p>No rides found</p>
+              <p className="text-sm mt-1">Select a date or click "Show All Upcoming Rides"</p>
             </CardContent>
           </Card>
         )}

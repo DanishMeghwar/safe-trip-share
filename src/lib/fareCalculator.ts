@@ -2,20 +2,41 @@ import { Database } from "@/integrations/supabase/types";
 
 type VehicleType = Database['public']['Enums']['vehicle_type'];
 
-// Fuel consumption rates in PKR per kilometer for different vehicle types
-const FUEL_RATES: Record<VehicleType, number> = {
-  sedan: 8,
-  suv: 12,
-  hatchback: 6,
-  van: 10,
-  motorcycle: 4,
+// Current fuel price in Pakistan: 270 PKR per liter
+const FUEL_PRICE_PER_LITER = 270;
+
+// Vehicle fuel efficiency (km per liter)
+const VEHICLE_EFFICIENCY: Record<VehicleType, number> = {
+  sedan: 17,      // ~17 km/L
+  suv: 12,        // ~12 km/L
+  hatchback: 20,  // ~20 km/L
+  van: 10,        // ~10 km/L
+  motorcycle: 40, // ~40 km/L
 };
 
-// Base maintenance and wear-tear cost per km
-const MAINTENANCE_COST_PER_KM = 2;
+// Calculate fuel cost per km: FUEL_PRICE / EFFICIENCY
+const FUEL_RATES: Record<VehicleType, number> = {
+  sedan: FUEL_PRICE_PER_LITER / VEHICLE_EFFICIENCY.sedan,         // ~15.88 PKR/km
+  suv: FUEL_PRICE_PER_LITER / VEHICLE_EFFICIENCY.suv,             // ~22.50 PKR/km
+  hatchback: FUEL_PRICE_PER_LITER / VEHICLE_EFFICIENCY.hatchback, // ~13.50 PKR/km
+  van: FUEL_PRICE_PER_LITER / VEHICLE_EFFICIENCY.van,             // ~27.00 PKR/km
+  motorcycle: FUEL_PRICE_PER_LITER / VEHICLE_EFFICIENCY.motorcycle, // ~6.75 PKR/km
+};
+
+// Maintenance cost per km (tires, oil, wear-tear)
+const MAINTENANCE_COST: Record<VehicleType, number> = {
+  sedan: 5,
+  suv: 6,
+  hatchback: 4,
+  van: 7,
+  motorcycle: 2,
+};
 
 // Driver's minimum profit margin (PKR)
-const DRIVER_BASE_PROFIT = 100;
+const DRIVER_BASE_PROFIT = 200;
+
+// Driver profit percentage of trip cost
+const DRIVER_PROFIT_PERCENTAGE = 0.25;
 
 export interface FareBreakdown {
   totalFare: number;
@@ -29,7 +50,7 @@ export interface FareBreakdown {
 
 /**
  * Calculate fare based on distance, vehicle type, and number of passengers
- * The cost is shared among passengers, with driver getting a base profit
+ * Uses realistic Pakistani fuel prices (270 PKR/L) and vehicle efficiencies
  */
 export const calculateFare = (
   distanceKm: number,
@@ -38,13 +59,13 @@ export const calculateFare = (
 ): FareBreakdown => {
   // Base costs
   const fuelCost = distanceKm * FUEL_RATES[vehicleType];
-  const maintenanceCost = distanceKm * MAINTENANCE_COST_PER_KM;
+  const maintenanceCost = distanceKm * MAINTENANCE_COST[vehicleType];
   
   // Total trip cost (excluding driver profit)
   const tripCost = fuelCost + maintenanceCost;
   
-  // Driver gets base profit plus share of trip cost savings
-  const driverProfit = DRIVER_BASE_PROFIT + (tripCost * 0.15);
+  // Driver gets base profit plus percentage of trip cost
+  const driverProfit = DRIVER_BASE_PROFIT + (tripCost * DRIVER_PROFIT_PERCENTAGE);
   
   // Total fare for the trip
   const totalFare = tripCost + driverProfit;

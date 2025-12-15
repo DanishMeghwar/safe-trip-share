@@ -135,38 +135,23 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-background">
-      {/* Animated Background */}
+      {/* Optimized Background - CSS only, no JS animations */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background to-secondary/20" />
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMzLjMxNCAwIDYgMi42ODYgNiA2cy0yLjY4NiA2LTYgNi02LTIuNjg2LTYtNiAyLjY4Ni02IDYtNm0wIDJjLTIuMjEgMC00IDEuNzktNCA0czEuNzkgNCA0IDQgNC0xLjc5IDQtNC0xLjc5LTQtNC00eiIgZmlsbD0iY3VycmVudENvbG9yIiBmaWxsLW9wYWNpdHk9Ii4wNSIvPjwvZz48L3N2Zz4=')] opacity-30" />
+      <div className="absolute inset-0 opacity-30" style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cpath d='M36 18c3.314 0 6 2.686 6 6s-2.686 6-6 6-6-2.686-6-6 2.686-6 6-6m0 2c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z' fill='currentColor' fill-opacity='.05'/%3E%3C/g%3E%3C/svg%3E")`
+      }} />
       
-      {/* Floating Elements */}
-      <motion.div
-        animate={{ y: [0, -20, 0], rotate: [0, 5, 0] }}
-        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-20 left-10 w-16 h-16 bg-primary/10 rounded-full blur-xl"
-      />
-      <motion.div
-        animate={{ y: [0, 20, 0], rotate: [0, -5, 0] }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute bottom-20 right-10 w-24 h-24 bg-secondary/10 rounded-full blur-xl"
-      />
-      <motion.div
-        animate={{ x: [0, 30, 0] }}
-        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-1/2 right-1/4 w-20 h-20 bg-accent/10 rounded-full blur-xl"
-      />
+      {/* Static decorative elements - no animations for better performance */}
+      <div className="absolute top-20 left-10 w-16 h-16 bg-primary/10 rounded-full blur-xl" />
+      <div className="absolute bottom-20 right-10 w-24 h-24 bg-secondary/10 rounded-full blur-xl" />
+      <div className="absolute top-1/2 right-1/4 w-20 h-20 bg-accent/10 rounded-full blur-xl" />
 
       {/* Content Container */}
       <div className="relative min-h-screen flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
           
-          {/* Left Side - Branding */}
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-            className="hidden lg:block space-y-8"
-          >
+          {/* Left Side - Branding - Simplified animation */}
+          <div className="hidden lg:block space-y-8 animate-fade-in">
             <div className="space-y-4">
               <div className="inline-flex items-center gap-3 bg-primary/10 backdrop-blur-sm px-6 py-3 rounded-full border border-primary/20">
                 <Car className="w-6 h-6 text-primary" />
@@ -211,15 +196,10 @@ const Auth = () => {
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
 
-          {/* Right Side - Auth Form */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="w-full"
-          >
+          {/* Right Side - Auth Form - CSS animation */}
+          <div className="w-full animate-fade-in" style={{ animationDelay: '0.1s' }}>
             {/* Mobile Logo */}
             <div className="lg:hidden text-center mb-8">
               <div className="inline-flex items-center gap-2 bg-primary/10 backdrop-blur-sm px-5 py-2 rounded-full border border-primary/20 mb-4">
@@ -407,7 +387,7 @@ const Auth = () => {
                 </form>
               )}
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     </div>

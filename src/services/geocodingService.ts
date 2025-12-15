@@ -1,5 +1,4 @@
-// Free geocoding service using OpenStreetMap Nominatim API
-// No API key required!
+import { MAPBOX_ACCESS_TOKEN } from '@/lib/mapboxConfig';
 
 export interface GeocodingResult {
   lat: number;
@@ -7,61 +6,86 @@ export interface GeocodingResult {
   displayName: string;
 }
 
-export interface SearchResult {
-  place_id: number;
-  lat: string;
-  lon: string;
-  display_name: string;
-  type: string;
+// Cache for geocoding results (24 hour expiry)
+const CACHE_KEY_PREFIX = 'geocache_';
+const CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
+
+interface CacheEntry {
+  results: GeocodingResult[];
+  timestamp: number;
 }
 
-// Search for locations by text query
+const getFromCache = (query: string): GeocodingResult[] | null => {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY_PREFIX + query.toLowerCase());
+    if (!cached) return null;
+    
+    const entry: CacheEntry = JSON.parse(cached);
+    if (Date.now() - entry.timestamp > CACHE_EXPIRY) {
+      localStorage.removeItem(CACHE_KEY_PREFIX + query.toLowerCase());
+      return null;
+    }
+    return entry.results;
+  } catch {
+    return null;
+  }
+};
+
+const setCache = (query: string, results: GeocodingResult[]) => {
+  try {
+    const entry: CacheEntry = { results, timestamp: Date.now() };
+    localStorage.setItem(CACHE_KEY_PREFIX + query.toLowerCase(), JSON.stringify(entry));
+  } catch {
+    // Storage full or unavailable, ignore
+  }
+};
+
+// Search for locations using Mapbox Geocoding (faster than Nominatim)
 export const searchLocation = async (query: string): Promise<GeocodingResult[]> => {
   if (!query || query.length < 3) return [];
 
+  // Check cache first
+  const cached = getFromCache(query);
+  if (cached) return cached;
+
   try {
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`,
-      {
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'ShareRide App'
-        }
-      }
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_ACCESS_TOKEN}&limit=5&country=pk`,
+      { headers: { 'Accept': 'application/json' } }
     );
 
     if (!response.ok) throw new Error('Geocoding failed');
 
-    const data: SearchResult[] = await response.json();
+    const data = await response.json();
     
-    return data.map((item) => ({
-      lat: parseFloat(item.lat),
-      lng: parseFloat(item.lon),
-      displayName: item.display_name,
+    const results = data.features.map((item: any) => ({
+      lat: item.center[1],
+      lng: item.center[0],
+      displayName: item.place_name,
     }));
+
+    // Cache results
+    setCache(query, results);
+    
+    return results;
   } catch (error) {
     console.error('Geocoding error:', error);
     return [];
   }
 };
 
-// Reverse geocode coordinates to address
+// Reverse geocode coordinates to address using Mapbox
 export const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
   try {
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
-      {
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'ShareRide App'
-        }
-      }
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_ACCESS_TOKEN}&limit=1`,
+      { headers: { 'Accept': 'application/json' } }
     );
 
     if (!response.ok) throw new Error('Reverse geocoding failed');
 
     const data = await response.json();
-    return data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    return data.features[0]?.place_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
   } catch (error) {
     console.error('Reverse geocoding error:', error);
     return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
