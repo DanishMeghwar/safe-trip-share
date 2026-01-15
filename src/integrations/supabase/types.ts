@@ -361,6 +361,54 @@ export type Database = {
           },
         ]
       }
+      ride_change_notifications: {
+        Row: {
+          booking_id: string
+          change_type: string
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          new_value: string | null
+          old_value: string | null
+          ride_id: string
+        }
+        Insert: {
+          booking_id: string
+          change_type: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          new_value?: string | null
+          old_value?: string | null
+          ride_id: string
+        }
+        Update: {
+          booking_id?: string
+          change_type?: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          new_value?: string | null
+          old_value?: string | null
+          ride_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_change_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ride_change_notifications_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rides: {
         Row: {
           available_seats: number
@@ -373,7 +421,9 @@ export type Database = {
           from_lng: number | null
           from_location: string
           id: string
+          is_round_trip: boolean | null
           notes: string | null
+          return_time: string | null
           route_distance_km: number | null
           status: Database["public"]["Enums"]["ride_status"] | null
           to_lat: number | null
@@ -393,7 +443,9 @@ export type Database = {
           from_lng?: number | null
           from_location: string
           id?: string
+          is_round_trip?: boolean | null
           notes?: string | null
+          return_time?: string | null
           route_distance_km?: number | null
           status?: Database["public"]["Enums"]["ride_status"] | null
           to_lat?: number | null
@@ -413,7 +465,9 @@ export type Database = {
           from_lng?: number | null
           from_location?: string
           id?: string
+          is_round_trip?: boolean | null
           notes?: string | null
+          return_time?: string | null
           route_distance_km?: number | null
           status?: Database["public"]["Enums"]["ride_status"] | null
           to_lat?: number | null

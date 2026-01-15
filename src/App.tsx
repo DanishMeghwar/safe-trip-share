@@ -19,6 +19,9 @@ import DriverVerification from "./pages/DriverVerification";
 import PassengerVerification from "./pages/PassengerVerification";
 import BookingDetails from "./pages/BookingDetails";
 import VehicleManagement from "./pages/VehicleManagement";
+import MyRides from "./pages/MyRides";
+import EditRide from "./pages/EditRide";
+import RideHistory from "./pages/RideHistory";
 import NotFound from "./pages/NotFound";
 import { NetworkStatus } from "./components/NetworkStatus";
 import { pushNotificationService } from "./services/pushNotificationService";
@@ -60,6 +63,9 @@ const App = () => {
             <Route path="/vehicle" element={<VehicleManagement />} />
             <Route path="/ride/:rideId" element={<ActiveRide />} />
             <Route path="/booking/:bookingId" element={<BookingDetails />} />
+            <Route path="/my-rides" element={<MyRides />} />
+            <Route path="/edit-ride/:rideId" element={<EditRide />} />
+            <Route path="/ride-history" element={<RideHistory />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/driver-documents" element={<AdminDriverDocuments />} />
             <Route path="/admin/users" element={<AdminUserManagement />} />

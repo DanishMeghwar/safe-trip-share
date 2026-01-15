@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 
@@ -10,55 +10,97 @@ type RideWithRelations = Ride & {
   vehicle?: { vehicle_type: string; make: string; model: string; color: string } | null;
 };
 
+// Normalize text for fuzzy matching (handles Urdu/English variations)
+const normalizeText = (text: string): string => {
+  return text
+    .toLowerCase()
+    .replace(/[\u0600-\u06FF]/g, '') // Remove Urdu characters for comparison
+    .replace(/[^a-z0-9\s]/g, '')
+    .trim();
+};
+
+// Fuzzy match function for location filtering
+const fuzzyMatch = (source: string, query: string): boolean => {
+  if (!query) return true;
+  const normalizedSource = normalizeText(source);
+  const normalizedQuery = normalizeText(query);
+  
+  // Check if any word in query appears in source
+  const queryWords = normalizedQuery.split(/\s+/).filter(w => w.length > 2);
+  return queryWords.some(word => normalizedSource.includes(word));
+};
+
 export const useRealtimeRides = (filters?: {
   status?: RideStatus[];
   fromLocation?: string;
   toLocation?: string;
   date?: string;
 }) => {
-  const [rides, setRides] = useState<RideWithRelations[]>([]);
+  const [allRides, setAllRides] = useState<RideWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Apply client-side filtering
+  const rides = useMemo(() => {
+    let filtered = [...allRides];
+
+    // Filter by status
+    if (filters?.status && filters.status.length > 0) {
+      filtered = filtered.filter(ride => 
+        ride.status && filters.status!.includes(ride.status as RideStatus)
+      );
+    }
+
+    // Filter by date
+    if (filters?.date) {
+      const startOfDay = new Date(filters.date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(filters.date);
+      endOfDay.setHours(23, 59, 59, 999);
+      
+      filtered = filtered.filter(ride => {
+        const departureTime = new Date(ride.departure_time);
+        return departureTime >= startOfDay && departureTime <= endOfDay;
+      });
+    }
+
+    // Fuzzy filter by from location
+    if (filters?.fromLocation && filters.fromLocation.trim()) {
+      filtered = filtered.filter(ride => 
+        fuzzyMatch(ride.from_location, filters.fromLocation!)
+      );
+    }
+
+    // Fuzzy filter by to location  
+    if (filters?.toLocation && filters.toLocation.trim()) {
+      filtered = filtered.filter(ride => 
+        fuzzyMatch(ride.to_location, filters.toLocation!)
+      );
+    }
+
+    // Sort by departure time
+    return filtered.sort((a, b) => 
+      new Date(a.departure_time).getTime() - new Date(b.departure_time).getTime()
+    );
+  }, [allRides, filters?.status, filters?.fromLocation, filters?.toLocation, filters?.date]);
+
   useEffect(() => {
-    // Initial fetch
+    // Initial fetch - get ALL upcoming rides (no text filtering in DB)
     const fetchRides = async () => {
       setLoading(true);
-      let query = supabase
+      
+      const { data, error } = await supabase
         .from('rides')
         .select(`
           *,
-          driver:profiles!driver_id(full_name, is_phone_verified),
+          driver:profiles(full_name, is_phone_verified),
           vehicle:vehicles(vehicle_type, make, model, color)
         `)
+        .in('status', ['scheduled', 'active'])
+        .gte('departure_time', new Date().toISOString())
         .order('departure_time', { ascending: true });
 
-      if (filters?.status && filters.status.length > 0) {
-        query = query.in('status', filters.status);
-      }
-
-      if (filters?.fromLocation) {
-        query = query.ilike('from_location', `%${filters.fromLocation}%`);
-      }
-
-      if (filters?.toLocation) {
-        query = query.ilike('to_location', `%${filters.toLocation}%`);
-      }
-
-      if (filters?.date) {
-        const startOfDay = new Date(filters.date);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(filters.date);
-        endOfDay.setHours(23, 59, 59, 999);
-        
-        query = query
-          .gte('departure_time', startOfDay.toISOString())
-          .lte('departure_time', endOfDay.toISOString());
-      }
-
-      const { data, error } = await query;
-      
       if (!error && data) {
-        setRides(data as any);
+        setAllRides(data as unknown as RideWithRelations[]);
       }
       setLoading(false);
     };
@@ -83,25 +125,14 @@ export const useRealtimeRides = (filters?: {
                 .from('rides')
                 .select(`
                   *,
-                  driver:profiles!driver_id(full_name, is_phone_verified),
+                  driver:profiles(full_name, is_phone_verified),
                   vehicle:vehicles(vehicle_type, make, model, color)
                 `)
                 .eq('id', payload.new.id)
                 .single();
               
               if (data) {
-                setRides((current) => {
-                  const newRide = data as any;
-                  // Apply filters
-                  if (filters?.status && filters.status.length > 0) {
-                    if (!newRide.status || !filters.status.includes(newRide.status as RideStatus)) {
-                      return current;
-                    }
-                  }
-                  return [...current, newRide].sort((a: any, b: any) => 
-                    new Date(a.departure_time).getTime() - new Date(b.departure_time).getTime()
-                  );
-                });
+                setAllRides((current) => [...current, data as unknown as RideWithRelations]);
               }
             };
             fetchNewRide();
@@ -112,24 +143,24 @@ export const useRealtimeRides = (filters?: {
                 .from('rides')
                 .select(`
                   *,
-                  driver:profiles!driver_id(full_name, is_phone_verified),
+                  driver:profiles(full_name, is_phone_verified),
                   vehicle:vehicles(vehicle_type, make, model, color)
                 `)
                 .eq('id', payload.new.id)
                 .single();
               
               if (data) {
-                setRides((current) =>
-                  current.map((ride: any) =>
-                    ride.id === payload.old.id ? data : ride
+                setAllRides((current) =>
+                  current.map((ride) =>
+                    ride.id === payload.old.id ? (data as unknown as RideWithRelations) : ride
                   )
                 );
               }
             };
             fetchUpdatedRide();
           } else if (payload.eventType === 'DELETE') {
-            setRides((current) =>
-              current.filter((ride: any) => ride.id !== payload.old.id)
+            setAllRides((current) =>
+              current.filter((ride) => ride.id !== payload.old.id)
             );
           }
         }
@@ -139,7 +170,7 @@ export const useRealtimeRides = (filters?: {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [filters?.status, filters?.fromLocation, filters?.toLocation, filters?.date]);
+  }, []); // No dependencies - fetch all rides once, filter client-side
 
-  return { rides, loading };
+  return { rides, loading, allRides };
 };
