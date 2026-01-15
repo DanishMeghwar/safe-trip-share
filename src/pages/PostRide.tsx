@@ -9,7 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Calendar, Users, DollarSign, Calculator, Info } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { ArrowLeft, Calendar, Users, DollarSign, Calculator, Info, RotateCcw } from "lucide-react";
 import { z } from "zod";
 import { getSuggestedFareRange } from "@/lib/fareCalculator";
 import { Database } from "@/integrations/supabase/types";
@@ -56,6 +57,8 @@ const PostRide = () => {
   const [vehicleType, setVehicleType] = useState<Database['public']['Enums']['vehicle_type'] | null>(null);
   const [suggestedFare, setSuggestedFare] = useState<ReturnType<typeof getSuggestedFareRange> | null>(null);
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const [isRoundTrip, setIsRoundTrip] = useState(false);
+  const [returnTime, setReturnTime] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -207,6 +210,8 @@ const PostRide = () => {
         route_distance_km: distanceKm,
         notes: notes || null,
         status: "scheduled",
+        is_round_trip: isRoundTrip,
+        return_time: isRoundTrip && returnTime ? new Date(returnTime).toISOString() : null,
       });
 
       if (error) throw error;
@@ -276,6 +281,34 @@ const PostRide = () => {
                   required
                 />
               </div>
+
+              <div className="flex items-center justify-between py-2 px-1 bg-muted/50 rounded-lg">
+                <Label htmlFor="roundTrip" className="flex items-center gap-2 cursor-pointer">
+                  <RotateCcw className="w-4 h-4 text-primary" />
+                  Round Trip (Up & Down)
+                </Label>
+                <Switch
+                  id="roundTrip"
+                  checked={isRoundTrip}
+                  onCheckedChange={setIsRoundTrip}
+                />
+              </div>
+
+              {isRoundTrip && (
+                <div className="space-y-2">
+                  <Label htmlFor="returnTime" className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-primary" />
+                    Return Time
+                  </Label>
+                  <Input
+                    id="returnTime"
+                    type="datetime-local"
+                    value={returnTime}
+                    onChange={(e) => setReturnTime(e.target.value)}
+                    min={departureTime}
+                  />
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="distance">Distance (km)</Label>

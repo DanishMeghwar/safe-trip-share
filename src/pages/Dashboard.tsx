@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Car, Users, MapPin, Search, Settings, LogOut, Star, Activity, FileCheck, MessageCircle } from "lucide-react";
+import { Car, Users, MapPin, Search, Settings, LogOut, Star, Activity, FileCheck, MessageCircle, History, Route } from "lucide-react";
+import RideChangeNotifications from "@/components/RideChangeNotifications";
 import VerificationNotifications from "@/components/VerificationNotifications";
 import { VerificationBadges } from "@/components/VerificationBadges";
 import { useRealtimeBookings } from "@/hooks/useRealtimeBookings";
@@ -139,6 +140,7 @@ const Dashboard = () => {
           </div>
           <div className="flex gap-2">
             <VerificationNotifications />
+            <RideChangeNotifications />
             <Button variant="ghost" size="icon" className="text-primary-foreground" onClick={handleSignOut}>
               <LogOut className="w-5 h-5" />
             </Button>
@@ -231,17 +233,27 @@ const Dashboard = () => {
             </Card>
           )}
 
-          {isDriver && hasVehicle && (
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate("/vehicle")}>
+          {isDriver && (
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate("/my-rides")}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <Car className="w-5 h-5 text-primary" />
-                  Manage Vehicle
+                  <Route className="w-5 h-5 text-primary" />
+                  My Rides
                 </CardTitle>
-                <CardDescription>Update your vehicle information</CardDescription>
+                <CardDescription>View and manage your posted rides</CardDescription>
               </CardHeader>
             </Card>
           )}
+
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate("/ride-history")}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <History className="w-5 h-5 text-primary" />
+                Ride History
+              </CardTitle>
+              <CardDescription>View your completed trips</CardDescription>
+            </CardHeader>
+          </Card>
 
           <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate("/profile")}>
             <CardHeader>
